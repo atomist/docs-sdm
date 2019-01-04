@@ -1,3 +1,4 @@
+import { TodoAutoInspection, TodoIssueListenerRegistration } from './todoToIssue';
 /*
  * Copyright © 2018 Atomist, Inc.
  *
@@ -23,6 +24,7 @@ import {
     SoftwareDeliveryMachine,
     SoftwareDeliveryMachineConfiguration,
     whenPushSatisfies,
+    AutoCodeInspection,
 } from "@atomist/sdm";
 import {
     createSoftwareDeliveryMachine,
@@ -69,6 +71,10 @@ export function machine(
     const fingerprint = new Fingerprint().with(TbdFingerprinterRegistration)
         .withListener(tbdFingerprintListener);
 
+    const autoInspect = new AutoCodeInspection()
+        .with(TodoAutoInspection)
+        .withListener(TodoIssueListenerRegistration)
+
     const build = new Build("mkdocs build")
         .with(mkdocsBuilderRegistration());
 
@@ -77,7 +83,8 @@ export function machine(
         executeMkdocsStrict);
 
     const mkDocsGoals = goals("mkdocs")
-        .plan(autofix, fingerprint)
+        .plan(autoInspect)
+        .plan(autofix, fingerprint).after(autoInspect)
         .plan(build).after(autofix)
         .plan(strictMkdocsBuild).after(build);
 

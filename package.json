@@ -30,6 +30,7 @@
     "@atomist/sdm": "^1.2.0",
     "@atomist/sdm-core": "^1.2.0",
     "@atomist/sdm-pack-build": "^1.0.3",
+    "@atomist/sdm-pack-issue": "^1.1.0",
     "@atomist/sdm-pack-markdown": "^0.1.2",
     "@atomist/slack-messages": "^1.1.0",
     "@atomist/tree-path": "^1.0.1",
