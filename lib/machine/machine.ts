@@ -67,7 +67,7 @@ export function machine(
 
     sdm.addCodeInspectionCommand(listTodoCodeInspectionRegistration());
 
-    const autofix = new Autofix().with(PutTbdInEmptySectionsAutofix)
+    const autofix = new Autofix()
         .with(AlphabetizeGlossaryAutofix);
 
     const fingerprint = new Fingerprint().with(TbdFingerprinterRegistration)
@@ -90,10 +90,10 @@ export function machine(
         .plan(build).after(autofix)
         .plan(strictMkdocsBuild).after(build);
 
-    sdm.withPushRules(
-        whenPushSatisfies(IsMkdocsProject)
-            .setGoals(mkDocsGoals),
-    );
+    // sdm.withPushRules(
+    //     whenPushSatisfies(IsMkdocsProject)
+    //         .setGoals(mkDocsGoals),
+    // );
 
     sdm.addGeneratorCommand(MkdocsSiteGenerator);
 

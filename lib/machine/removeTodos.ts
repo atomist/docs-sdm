@@ -1,10 +1,10 @@
 import { TransformResult, PushAwareParametersInvocation, CodeTransformRegistration, SdmContext } from "@atomist/sdm";
-import { Project, NoParameters, deepLink, GitHubRepoRef } from "@atomist/automation-client";
+import { Project, NoParameters, deepLink, GitHubRepoRef, logger } from "@atomist/automation-client";
 import { listTodoCodeInspection, Todo } from "./listTodoCommand";
 import * as slack from "@atomist/slack-messages";
 import _ = require("lodash");
 
-async function removeTodoTransform(p: Project, inv: PushAwareParametersInvocation<NoParameters>): Promise<TransformResult> {
+export async function removeTodoTransform(p: Project, inv: PushAwareParametersInvocation<NoParameters>): Promise<TransformResult> {
     const todos = await listTodoCodeInspection(p, undefined);
     if (todos.length === 0) {
         return { edited: false, target: p, success: true };
@@ -67,7 +67,13 @@ async function updateFileContent(project: Project,
     path: string,
     updateFn: (s: string) => string): Promise<void> {
     const file = await project.getFile(path);
-    await file.setContent(updateFn(await file.getContent()));
+    const fileContent = await file.getContent();
+    const newContent = updateFn(fileContent);
+    if (path === "docs/lifecycle.md") {
+        logger.info("Retrieved content from " + file.path + " and it is: " + fileContent);
+        logger.info("new content: " + newContent);
+    }
+    await file.setContent(newContent);
     return;
 }
 
