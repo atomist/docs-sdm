@@ -107,7 +107,7 @@ function deepLinkToComment(c: ReviewComment, grr: GitHubRepoRef): string {
 }
 
 export function reviewCommentInMarkdown(body: string, rc: ReviewComment): boolean {
-    const reString = `\\b${rc.sourceLocation.lineFrom1}\\b.*${(rc.detail)}\`?$`;
+    const reString = `\\b${rc.sourceLocation.lineFrom1}\\b.*${escapeStringRegexp(rc.detail)}\`?$`;
     // console.log("reString = " + reString);
     const r = new RegExp(reString, "m");
     // console.log("r = " + r);
