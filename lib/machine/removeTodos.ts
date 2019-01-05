@@ -10,12 +10,18 @@ export async function removeTodoTransform(p: Project, inv: PushAwareParametersIn
         return { edited: false, target: p, success: true };
     }
 
-    await asyncForEach(laterInTheFileIsFirst(todos), async t => {
-        if (partialHtmlComment(t.lineContent)) {
-            await inv.addressChannels(warnAboutPartialHtmlComment(inv, p, t))
+    const todosByFile = _.groupBy(todos, t => t.path);
+
+    for (const path in todosByFile) {
+        const todosWithinFile = todosByFile[path];
+        for (const t of todosWithinFile) {
+            if (partialHtmlComment(t.lineContent)) {
+                await inv.addressChannels(warnAboutPartialHtmlComment(inv, p, t))
+            }
         }
-        deleteLine(p, t.path, t.lineFrom1);
-    })
+        const linesToDelete = todosWithinFile.map(t => t.lineFrom1);
+        deleteLines(p, path, linesToDelete);
+    }
 
     return { edited: true, target: p, success: true };
 }
@@ -24,11 +30,6 @@ export const removeTodoTransformRegistration: CodeTransformRegistration = {
     name: "removeTodoTransform",
     intent: "remove all todos",
     transform: removeTodoTransform,
-}
-
-// when deleting by line number, don't screw up the line numbers of later lines we delete
-function laterInTheFileIsFirst(todos: Todo[]): Todo[] {
-    return _.sortBy(todos, t => 0 - t.lineFrom1)
 }
 
 const htmlCommentBegins = /<\!--/g;
@@ -59,8 +60,15 @@ export function dropLine(lineFrom1: number, fileContent: string) {
     return [...lines.slice(0, lineFrom1 - 1), ...lines.slice(lineFrom1)].join("\n");
 }
 
-async function deleteLine(project: Project, path: string, lineFrom1: number): Promise<void> {
-    return updateFileContent(project, path, s => dropLine(lineFrom1, s));
+async function deleteLines(project: Project, path: string, linesFrom1: number[]): Promise<void> {
+    return updateFileContent(project, path, s => {
+        let result = s;
+        const linesInReverseOrder = _.sortBy(linesFrom1, t => 0 - t);
+        linesInReverseOrder.forEach(n => {
+            result = dropLine(n, result)
+        });
+        return result;
+    });
 }
 
 async function updateFileContent(project: Project,
@@ -69,14 +77,10 @@ async function updateFileContent(project: Project,
     const file = await project.getFile(path);
     const fileContent = await file.getContent();
     const newContent = updateFn(fileContent);
-    if (path === "docs/lifecycle.md") {
-        logger.info("Retrieved content from " + file.path + " and it is: " + fileContent);
-        logger.info("new content: " + newContent);
-    }
+    // if (path === "docs/lifecycle.md") {
+    //     console.log("Retrieved content from " + file.path + " and it is: " + fileContent);
+    //     console.log("new content: " + newContent);
+    // }
     await file.setContent(newContent);
     return;
-}
-
-async function asyncForEach<T>(array: T[], fn: (t: T) => Promise<any>) {
-    return Promise.all(array.map(fn));
 }
