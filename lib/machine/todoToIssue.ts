@@ -1,11 +1,10 @@
 import { ReviewListener, CodeInspection, ReviewListenerInvocation, CodeInspectionRegistration, ReviewListenerRegistration } from "@atomist/sdm";
-import { ProjectReview, NoParameters, Project, ReviewComment, GitHubRepoRef, Issue, deepLink, logger, ProjectOperationCredentials, RemoteRepoRef, TokenCredentials } from "@atomist/automation-client";
+import { ProjectReview, NoParameters, Project, ReviewComment, GitHubRepoRef, Issue, deepLink, logger } from "@atomist/automation-client";
 import { listTodoCodeInspection, Todo } from "./listTodoCommand";
 import _ = require("lodash");
-import { findIssue, createIssue, KnownIssue } from "@atomist/sdm-pack-issue/lib/review/issue";
-import { github } from "@atomist/sdm-core";
+import { findIssue, createIssue, updateIssue } from "@atomist/sdm-pack-issue/lib/review/issue";
+import * as escapeStringRegexp from "escape-string-regexp";
 
-import axios, { AxiosRequestConfig } from "axios";
 
 const todosAsProjectReview: CodeInspection<ProjectReview, NoParameters> =
     async (p: Project) => {
@@ -80,26 +79,6 @@ const todoIssueCreationInspectionListener: ReviewListener = async (ri: ReviewLis
     }
 }
 
-export async function updateIssue(credentials: ProjectOperationCredentials, rr: RemoteRepoRef, issue: KnownIssue): Promise<KnownIssue> {
-    const safeIssue = {
-        state: issue.state,
-        body: issue.body,
-    };
-    const token = (credentials as TokenCredentials).token;
-    const grr = rr as GitHubRepoRef;
-    const url = encodeURI(`${grr.scheme}${grr.apiBase}/repos/${rr.owner}/${rr.repo}/issues/${issue.number}`);
-    logger.info(`Request to '${url}' to update issue`);
-    try {
-        const resp = await axios.patch(url, safeIssue, github.authHeaders(token) as unknown as AxiosRequestConfig);
-        logger.warn("WTF is here")
-        return resp.data;
-    } catch (e) {
-        e.message = `Failed to update issue ${issue.number}: ${e.message}`;
-        logger.error(e.message);
-        throw e;
-    }
-}
-
 export const TodoIssueListenerRegistration: ReviewListenerRegistration = {
     name: "CreateIssueForTodos",
     listener: todoIssueCreationInspectionListener,
@@ -128,7 +107,7 @@ function deepLinkToComment(c: ReviewComment, grr: GitHubRepoRef): string {
 }
 
 export function reviewCommentInMarkdown(body: string, rc: ReviewComment): boolean {
-    const reString = `\\b${rc.sourceLocation.lineFrom1}\\b.*${rc.detail}$`;
+    const reString = `\\b${rc.sourceLocation.lineFrom1}\\b.*${escapeStringRegexp(rc.detail)}$`;
     // console.log("reString = " + reString);
     const r = new RegExp(reString, "m");
     // console.log("r = " + r);

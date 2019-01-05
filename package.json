@@ -36,6 +36,7 @@
     "@atomist/tree-path": "^1.0.1",
     "@types/lodash": "^4.14.118",
     "@types/node": "^10.5.7",
+    "escape-string-regexp": "^1.0.5",
     "lodash": "^4.17.11"
   },
   "devDependencies": {
