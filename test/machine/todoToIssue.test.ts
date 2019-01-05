@@ -33,4 +33,10 @@ describe("Finding TODOs in the body", () => {
         const constructedBody = bodyFormatter([oneRC], fakeRR);
         assert(!reviewCommentInMarkdown(constructedBody, anotherRC));
     });
+
+    it("Can find a TODO in a string that regexp does not like", () => {
+        const anotherRC = { ...oneRC, detail: "<!-- ** TODO you hate double asterisks -->" };
+        const constructedBody = bodyFormatter([anotherRC], fakeRR);
+        assert(reviewCommentInMarkdown(constructedBody, anotherRC));
+    })
 });
