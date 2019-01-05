@@ -50,6 +50,7 @@ import {
     TbdFingerprinterRegistration,
     tbdFingerprintListener,
 } from "./tbdFingerprinter";
+import { removeTodoTransformRegistration } from './removeTodos';
 
 export function machine(
     configuration: SoftwareDeliveryMachineConfiguration,
@@ -62,6 +63,7 @@ export function machine(
 
     sdm.addCodeTransformCommand(PutTbdInEmptySectionsCommand);
     sdm.addCodeTransformCommand(AlphabetizeGlossaryCommand);
+    sdm.addCodeTransformCommand(removeTodoTransformRegistration);
 
     sdm.addCodeInspectionCommand(listTodoCodeInspectionRegistration());
 

@@ -5,7 +5,6 @@ import _ = require("lodash");
 import { findIssue, createIssue, updateIssue } from "@atomist/sdm-pack-issue/lib/review/issue";
 import * as escapeStringRegexp from "escape-string-regexp";
 
-
 const todosAsProjectReview: CodeInspection<ProjectReview, NoParameters> =
     async (p: Project) => {
         function todoToReviewComment(todo: Todo): ReviewComment {
