@@ -1,8 +1,11 @@
 import { ReviewListener, CodeInspection, ReviewListenerInvocation, CodeInspectionRegistration, ReviewListenerRegistration } from "@atomist/sdm";
-import { ProjectReview, NoParameters, Project, ReviewComment, GitHubRepoRef, Issue, deepLink, logger } from "@atomist/automation-client";
+import { ProjectReview, NoParameters, Project, ReviewComment, GitHubRepoRef, Issue, deepLink, logger, ProjectOperationCredentials, RemoteRepoRef, TokenCredentials } from "@atomist/automation-client";
 import { listTodoCodeInspection, Todo } from "./listTodoCommand";
 import _ = require("lodash");
-import { findIssue, createIssue, updateIssue } from "@atomist/sdm-pack-issue/lib/review/issue";
+import { findIssue, createIssue, KnownIssue } from "@atomist/sdm-pack-issue/lib/review/issue";
+import { github } from "@atomist/sdm-core";
+
+import axios, { AxiosRequestConfig } from "axios";
 
 const todosAsProjectReview: CodeInspection<ProjectReview, NoParameters> =
     async (p: Project) => {
@@ -49,7 +52,6 @@ const todoIssueCreationInspectionListener: ReviewListener = async (ri: ReviewLis
             const issue: Issue = {
                 title,
                 body: `${bodyFormatter(relevantComments, ri.id as GitHubRepoRef)}`,
-                assignees: _.uniq(ri.push.commits.map(c => c.author.login)),
             };
             logger.info("Creating issue %j from review comment", issue);
             await createIssue(ri.credentials, issueRepo, issue);
@@ -60,17 +62,41 @@ const todoIssueCreationInspectionListener: ReviewListener = async (ri: ReviewLis
             if (additionalTODOs.length > 0) {
                 logger.info("Updating issue %d with the latest ", existingIssue.number);
                 const body = existingIssue.body + "\n" + bodyFormatter(additionalTODOs, ri.id as GitHubRepoRef)
-                await updateIssue(ri.credentials, ri.id,
-                    {
-                        ...existingIssue,
-                        state: "open",
-                        body,
-                        assignees: _.uniq(ri.push.commits.map(c => c.author.login)),
-                    });
+                try {
+                    await updateIssue(ri.credentials, issueRepo,
+                        {
+                            ...existingIssue,
+                            state: "open",
+                            body,
+                        });
+                } catch (x) {
+                    const e = x as Error;
+                    await ri.addressChannels("Warning: tried to update issue " + existingIssue.url + " but got an error: " + e.stack)
+                }
             } else {
                 logger.info("Not updating issue %d; no new TODOs detected", existingIssue.number);
             }
         }
+    }
+}
+
+export async function updateIssue(credentials: ProjectOperationCredentials, rr: RemoteRepoRef, issue: KnownIssue): Promise<KnownIssue> {
+    const safeIssue = {
+        state: issue.state,
+        body: issue.body,
+    };
+    const token = (credentials as TokenCredentials).token;
+    const grr = rr as GitHubRepoRef;
+    const url = encodeURI(`${grr.scheme}${grr.apiBase}/repos/${rr.owner}/${rr.repo}/issues/${issue.number}`);
+    logger.info(`Request to '${url}' to update issue`);
+    try {
+        const resp = await axios.patch(url, safeIssue, github.authHeaders(token) as unknown as AxiosRequestConfig);
+        logger.warn("WTF is here")
+        return resp.data;
+    } catch (e) {
+        e.message = `Failed to update issue ${issue.number}: ${e.message}`;
+        logger.error(e.message);
+        throw e;
     }
 }
 
@@ -80,12 +106,13 @@ export const TodoIssueListenerRegistration: ReviewListenerRegistration = {
 };
 
 export function bodyFormatter(reviewComments: ReviewComment[], grr: GitHubRepoRef): string {
-    return reviewComments.map(rc => reviewCommentToMarkdown(rc, grr)).join();
+    const header = `Automatically created by atomist/docs-sdm, based on ${grr.owner}/${grr.repo}@${grr.sha}\n`
+    return header + reviewComments.map(rc => reviewCommentToMarkdown(rc, grr)).join("");
 }
 
 function reviewCommentToMarkdown(c: ReviewComment, grr: GitHubRepoRef): string {
     const loc = deepLinkToComment(c, grr);
-    return `[ ] ${loc} ${c.detail}\n`;
+    return `- [ ] ${loc} \`${c.detail}\`\n`;
 }
 
 function deepLinkToComment(c: ReviewComment, grr: GitHubRepoRef): string {
