@@ -16,6 +16,7 @@ import { TodoAutoInspection, TodoIssueListenerRegistration } from './todoToIssue
  */
 
 import {
+    AutoCodeInspection,
     Autofix,
     createGoal,
     Fingerprint,
@@ -24,7 +25,6 @@ import {
     SoftwareDeliveryMachine,
     SoftwareDeliveryMachineConfiguration,
     whenPushSatisfies,
-    AutoCodeInspection,
 } from "@atomist/sdm";
 import {
     createSoftwareDeliveryMachine,

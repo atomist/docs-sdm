@@ -16,7 +16,10 @@
 
 import { removeTodoTransformRegistration, removeTodoTransform } from './../../lib/machine/removeTodos';
 import * as assert from "assert";
-import { partialHtmlComment, dropLine } from "../../lib/machine/removeTodos";
+import {
+    dropLine,
+    partialHtmlComment,
+} from "../../lib/machine/removeTodos";
 
 describe("partial HTML comment", () => {
     it("Should not see a full comment as a partial comment", () => {

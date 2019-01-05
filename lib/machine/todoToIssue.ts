@@ -14,11 +14,33 @@
  * limitations under the License.
  */
 
-import { ReviewListener, CodeInspection, ReviewListenerInvocation, CodeInspectionRegistration, ReviewListenerRegistration } from "@atomist/sdm";
-import { ProjectReview, NoParameters, Project, ReviewComment, GitHubRepoRef, Issue, deepLink, logger } from "@atomist/automation-client";
-import { listTodoCodeInspection, Todo } from "./listTodoCommand";
+import {
+    CodeInspection,
+    CodeInspectionRegistration,
+    ReviewListener,
+    ReviewListenerInvocation,
+    ReviewListenerRegistration,
+} from "@atomist/sdm";
+import {
+    deepLink,
+    GitHubRepoRef,
+    Issue,
+    logger,
+    NoParameters,
+    Project,
+    ProjectReview,
+    ReviewComment,
+} from "@atomist/automation-client";
+import {
+    listTodoCodeInspection,
+    Todo,
+} from "./listTodoCommand";
 import _ = require("lodash");
-import { findIssue, createIssue, updateIssue } from "@atomist/sdm-pack-issue/lib/review/issue";
+import {
+    createIssue,
+    findIssue,
+    updateIssue,
+} from "@atomist/sdm-pack-issue/lib/review/issue";
 import * as escapeStringRegexp from "escape-string-regexp";
 
 const todosAsProjectReview: CodeInspection<ProjectReview, NoParameters> =

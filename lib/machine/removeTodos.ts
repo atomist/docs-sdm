@@ -14,9 +14,23 @@
  * limitations under the License.
  */
 
-import { TransformResult, PushAwareParametersInvocation, CodeTransformRegistration, SdmContext } from "@atomist/sdm";
-import { Project, NoParameters, deepLink, GitHubRepoRef, logger } from "@atomist/automation-client";
-import { listTodoCodeInspection, Todo } from "./listTodoCommand";
+import {
+    CodeTransformRegistration,
+    PushAwareParametersInvocation,
+    SdmContext,
+    TransformResult,
+} from "@atomist/sdm";
+import {
+    deepLink,
+    GitHubRepoRef,
+    logger,
+    NoParameters,
+    Project,
+} from "@atomist/automation-client";
+import {
+    listTodoCodeInspection,
+    Todo,
+} from "./listTodoCommand";
 import * as slack from "@atomist/slack-messages";
 import _ = require("lodash");
 

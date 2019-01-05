@@ -15,8 +15,14 @@
  */
 
 import * as assert from "assert";
-import { ReviewComment, GitHubRepoRef } from "@atomist/automation-client";
-import { bodyFormatter, reviewCommentInMarkdown } from "../../lib/machine/todoToIssue";
+import {
+    GitHubRepoRef,
+    ReviewComment,
+} from "@atomist/automation-client";
+import {
+    bodyFormatter,
+    reviewCommentInMarkdown,
+} from "../../lib/machine/todoToIssue";
 
 const fakeRR = GitHubRepoRef.from({ owner: "yes", repo: "no", sha: "1b1ef2c3004597682f69134fc4fcfbf20316f28d" });
 
