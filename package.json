@@ -27,7 +27,7 @@
   "dependencies": {
     "@atomist/automation-client": "^1.2.0",
     "@atomist/automation-client-ext-logzio": "^1.0.1",
-    "@atomist/sdm": "^1.2.0",
+    "@atomist/sdm": "^1.2.1-nortissej.populate-sha.20190106193518",
     "@atomist/sdm-core": "^1.2.0",
     "@atomist/sdm-pack-build": "^1.0.3",
     "@atomist/sdm-pack-issue": "^1.1.0",

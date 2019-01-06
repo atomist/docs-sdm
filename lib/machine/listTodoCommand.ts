@@ -40,7 +40,7 @@ export interface Todo {
  * This does not need to be a transform. It does not change the project.
  * I just want to run a command with access to the project and this gets me that
  */
-export const listTodoCodeInspection: CodeInspection<Todo[]> = async (project) => {
+export const listTodoCodeInspection: CodeInspection<Todo[]> = async (project, inv) => {
     const todos: Todo[] = _.flatten(await gatherFromFiles(project, "**/*.md", async f => {
         const lines: string[] = (await f.getContent()).split("\n");
         const items = lines

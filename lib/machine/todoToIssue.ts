@@ -24,6 +24,8 @@ import {
     GitHubRepoRef,
     Issue,
     logger,
+    TokenCredentials,
+    RepoRef,
 } from "@atomist/automation-client";
 import {
     listTodoCodeInspection,
@@ -41,6 +43,16 @@ const issueRepo: GitHubRepoRef = GitHubRepoRef.from({
     owner: "atomisthq",
     repo: "docs-issues",
 });
+const credentials: TokenCredentials = { token: process.env.GITHUB_TOKEN }; // inv.credentials
+
+function identifyingTitle(fileWithTodos: string): string {
+    return `Complete ` + fileWithTodos;
+}
+
+function tellMeAboutIt(inv: CommandListenerInvocation, jessage: string) {
+    // there's something that tells me who invoked it, but I'm gonna address myself
+    return inv.context.messageClient.addressUsers("jessitron", jessage);
+}
 
 const todoIssueCreation = async (
     allCodeInspectionResults: Array<CodeInspectionResult<Todo[]>>,
@@ -52,39 +64,45 @@ const todoIssueCreation = async (
 
         for (const fileWithTodos in todosByFile) {
             const relevantTodos = todosByFile[fileWithTodos];
-            const title = `Improve ` + fileWithTodos;
-            const existingIssue = await findIssue(inv.credentials, issueRepo, title);
+            await createOrUpdateIssue(inv, projectId, fileWithTodos, relevantTodos)
+        }
+    }
+}
 
-            // there are some comments
-            if (!existingIssue) {
-                const issue: Issue = {
-                    title,
-                    body: `${bodyFormatter(relevantTodos, projectId as GitHubRepoRef)}`,
-                };
-                logger.info("Creating issue %j from review comment", issue);
-                await createIssue(inv.credentials, issueRepo, issue);
-            } else {
-                // Supplement the issue if necessary, reopening it if need be
-                const additionalTODOs = relevantTodos.
-                    filter(c => !markdownIncludesTodo(existingIssue.body, c))
-                if (additionalTODOs.length > 0) {
-                    logger.info("Updating issue %d with the latest ", existingIssue.number);
-                    const body = existingIssue.body + "\n" + bodyFormatter(additionalTODOs, projectId as GitHubRepoRef)
-                    try {
-                        await updateIssue(inv.credentials, issueRepo,
-                            {
-                                ...existingIssue,
-                                state: "open",
-                                body,
-                            });
-                    } catch (x) {
-                        const e = x as Error;
-                        await inv.addressChannels("Warning: tried to update issue " + existingIssue.url + " but got an error: " + e.stack)
-                    }
-                } else {
-                    logger.info("Not updating issue %d; no new TODOs detected", existingIssue.number);
-                }
+async function createOrUpdateIssue(inv: CommandListenerInvocation, projectId: RepoRef, fileWithTodos: string, relevantTodos: Todo[]) {
+    const title = identifyingTitle(fileWithTodos);
+    const existingIssue = await findIssue(credentials, issueRepo, title);
+
+    // there are some comments
+    if (!existingIssue) {
+        const issue: Issue = {
+            title,
+            body: `${bodyFormatter(relevantTodos, projectId as GitHubRepoRef)}`,
+        };
+        logger.info("Creating issue %j from review comment", issue);
+        const createdIssue = await createIssue(credentials, issueRepo, issue);
+        await tellMeAboutIt(inv, `Created \ ${createdIssue.url} with ${relevantTodos.length} todos`);
+    } else {
+        // Supplement the issue if necessary, reopening it if need be
+        const additionalTODOs = relevantTodos.
+            filter(c => !markdownIncludesTodo(existingIssue.body, c))
+        if (additionalTODOs.length > 0) {
+            logger.info("Updating issue %d with the latest ", existingIssue.number);
+            const body = existingIssue.body + "\n" + bodyFormatter(additionalTODOs, projectId as GitHubRepoRef)
+            try {
+                const updatedIssue = await updateIssue(credentials, issueRepo,
+                    {
+                        ...existingIssue,
+                        state: "open",
+                        body,
+                    });
+                await tellMeAboutIt(inv, `Created \ ${updatedIssue.url} with ${relevantTodos.length} todos`);
+            } catch (x) {
+                const e = x as Error;
+                await inv.addressChannels("Warning: tried to update issue " + existingIssue.url + " but got an error: " + e.stack)
             }
+        } else {
+            logger.info("Not updating issue %d; no new TODOs detected", existingIssue.number);
         }
     }
 }
@@ -110,10 +128,18 @@ function deepLinkToTodo(c: Todo, grr: GitHubRepoRef): string {
     let loc: string = "";
     const line = (c.lineFrom1) ? `:${c.lineFrom1}` : "";
     loc = "`" + c.path + line + "`";
-    const url = deepLink(grr, { lineFrom1: c.lineFrom1, path: c.path, offset: undefined });
+    const url = blameMode(deepLink(grr, { lineFrom1: c.lineFrom1, path: c.path, offset: undefined }));
     loc = `[${loc}](${url})`;
     loc += ": ";
     return loc;
+}
+
+/**
+ * On GitHub, blame mode is the only way to see the source of a .md file with a particular line highlighted.
+ * @param blobLink a deep GitHub link into the contents of a file
+ */
+function blameMode(blobLink: string): string {
+    return blobLink.replace("/blob/", "/blame/");
 }
 
 export function markdownIncludesTodo(body: string, rc: Todo): boolean {
