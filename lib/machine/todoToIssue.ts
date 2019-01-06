@@ -24,8 +24,8 @@ import {
     GitHubRepoRef,
     Issue,
     logger,
-    TokenCredentials,
     RepoRef,
+    TokenCredentials,
 } from "@atomist/automation-client";
 import {
     listTodoCodeInspection,
