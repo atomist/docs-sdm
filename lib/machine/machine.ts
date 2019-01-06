@@ -1,4 +1,3 @@
-import { TodoAutoInspection, TodoIssueListenerRegistration } from './todoToIssue';
 /*
  * Copyright © 2018 Atomist, Inc.
  *
@@ -16,7 +15,6 @@ import { TodoAutoInspection, TodoIssueListenerRegistration } from './todoToIssue
  */
 
 import {
-    AutoCodeInspection,
     Autofix,
     createGoal,
     Fingerprint,
@@ -24,7 +22,6 @@ import {
     PushTest,
     SoftwareDeliveryMachine,
     SoftwareDeliveryMachineConfiguration,
-    whenPushSatisfies,
 } from "@atomist/sdm";
 import {
     createSoftwareDeliveryMachine,
@@ -38,10 +35,6 @@ import {
     AlphabetizeGlossaryCommand,
 } from "./alphabetizeGlossary";
 import {
-    PutTbdInEmptySectionsAutofix,
-    PutTbdInEmptySectionsCommand,
-} from "./emptySectionsContainTbd";
-import {
     listTodoCodeInspectionRegistration,
 } from "./listTodoCommand";
 import { MkdocsSiteGenerator } from "./mkdocsGenerator";
@@ -51,6 +44,7 @@ import {
     tbdFingerprintListener,
 } from "./tbdFingerprinter";
 import { removeTodoTransformRegistration } from './removeTodos';
+import { createIssueForTodos } from "./todoToIssue";
 
 export function machine(
     configuration: SoftwareDeliveryMachineConfiguration,
@@ -65,16 +59,12 @@ export function machine(
     sdm.addCodeTransformCommand(removeTodoTransformRegistration);
 
     sdm.addCodeInspectionCommand(listTodoCodeInspectionRegistration());
+    sdm.addCodeInspectionCommand(createIssueForTodos)
 
-    const autofix = new Autofix().with(removeTodoTransformRegistration)
-        .with(AlphabetizeGlossaryAutofix);
+    const autofix = new Autofix().with(AlphabetizeGlossaryAutofix);
 
     const fingerprint = new Fingerprint().with(TbdFingerprinterRegistration)
         .withListener(tbdFingerprintListener);
-
-    const autoInspect = new AutoCodeInspection()
-        .with(TodoAutoInspection)
-        .withListener(TodoIssueListenerRegistration)
 
     const build = new Build("mkdocs build")
         .with(mkdocsBuilderRegistration());
@@ -84,15 +74,14 @@ export function machine(
         executeMkdocsStrict);
 
     const mkDocsGoals = goals("mkdocs")
-        .plan(autoInspect)
-        .plan(autofix, fingerprint).after(autoInspect)
+        .plan(autofix, fingerprint)
         .plan(build).after(autofix)
         .plan(strictMkdocsBuild).after(build);
 
-    sdm.withPushRules(
-        whenPushSatisfies(IsMkdocsProject)
-            .setGoals(mkDocsGoals),
-    );
+    // sdm.withPushRules(
+    //     whenPushSatisfies(IsMkdocsProject)
+    //         .setGoals(mkDocsGoals),
+    // );
 
     sdm.addGeneratorCommand(MkdocsSiteGenerator);
 

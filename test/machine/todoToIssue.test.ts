@@ -21,44 +21,41 @@ import {
 } from "@atomist/automation-client";
 import {
     bodyFormatter,
-    reviewCommentInMarkdown,
+    markdownIncludesTodo,
 } from "../../lib/machine/todoToIssue";
+import { Todo } from "../../lib/machine/listTodoCommand";
 
 const fakeRR = GitHubRepoRef.from({ owner: "yes", repo: "no", sha: "1b1ef2c3004597682f69134fc4fcfbf20316f28d" });
 
-const oneRC: ReviewComment = {
-    detail: "I am a lizard",
-    category: "todo",
-    severity: "error",
-    sourceLocation: {
-        lineFrom1: 42,
-        path: "docs/blah.md",
-        offset: undefined,
-    }
+const oneTodo: Todo = {
+    lineContent: "I am a lizard",
+    lineFrom1: 42,
+    path: "docs/blah.md",
+    emphasis: 0,
 };
 
 describe("Finding TODOs in the body", () => {
     it("Sees a todo that it already put there", async () => {
-        const constructedBody = bodyFormatter([oneRC], fakeRR);
+        const constructedBody = bodyFormatter([oneTodo], fakeRR);
 
-        assert(reviewCommentInMarkdown(constructedBody, oneRC));
+        assert(markdownIncludesTodo(constructedBody, oneTodo));
     });
 
     it("Does not find it when it is on a different line number", () => {
-        const anotherRC = { ...oneRC, sourceLocation: { ...oneRC.sourceLocation, lineFrom1: 4 } };
-        const constructedBody = bodyFormatter([oneRC], fakeRR);
-        assert(!reviewCommentInMarkdown(constructedBody, anotherRC));
+        const anotherTodo = { ...oneTodo, lineFrom1: 4 };
+        const constructedBody = bodyFormatter([oneTodo], fakeRR);
+        assert(!markdownIncludesTodo(constructedBody, anotherTodo));
     });
 
     it("Does not find it when it has a different content", () => {
-        const anotherRC = { ...oneRC, detail: "Your mother was a lizard" };
-        const constructedBody = bodyFormatter([oneRC], fakeRR);
-        assert(!reviewCommentInMarkdown(constructedBody, anotherRC));
+        const anotherTodo = { ...oneTodo, lineContent: "Your mother was a lizard" };
+        const constructedBody = bodyFormatter([oneTodo], fakeRR);
+        assert(!markdownIncludesTodo(constructedBody, anotherTodo));
     });
 
     it("Can find a TODO in a string that regexp does not like", () => {
-        const anotherRC = { ...oneRC, detail: "<!-- ** TODO you hate double asterisks -->" };
-        const constructedBody = bodyFormatter([anotherRC], fakeRR);
-        assert(reviewCommentInMarkdown(constructedBody, anotherRC));
+        const anotherTodo = { ...oneTodo, lineContent: "<!-- ** TODO you hate double asterisks -->" };
+        const constructedBody = bodyFormatter([anotherTodo], fakeRR);
+        assert(markdownIncludesTodo(constructedBody, anotherTodo));
     })
 });

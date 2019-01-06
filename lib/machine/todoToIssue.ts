@@ -15,21 +15,15 @@
  */
 
 import {
-    CodeInspection,
     CodeInspectionRegistration,
-    ReviewListener,
-    ReviewListenerInvocation,
-    ReviewListenerRegistration,
+    CodeInspectionResult,
+    CommandListenerInvocation,
 } from "@atomist/sdm";
 import {
     deepLink,
     GitHubRepoRef,
     Issue,
     logger,
-    NoParameters,
-    Project,
-    ProjectReview,
-    ReviewComment,
 } from "@atomist/automation-client";
 import {
     listTodoCodeInspection,
@@ -43,108 +37,87 @@ import {
 } from "@atomist/sdm-pack-issue/lib/review/issue";
 import * as escapeStringRegexp from "escape-string-regexp";
 
-const todosAsProjectReview: CodeInspection<ProjectReview, NoParameters> =
-    async (p: Project) => {
-        function todoToReviewComment(todo: Todo): ReviewComment {
-            return {
-                severity: "error",
-                category: "todo",
-                detail: todo.lineContent,
-                sourceLocation: {
-                    path: todo.path,
-                    lineFrom1: todo.lineFrom1,
-                    offset: undefined,
-                },
-            }
-        }
-        const todos = await listTodoCodeInspection(p, undefined);
-        return {
-            repoId: p.id,
-            comments: todos.map(todoToReviewComment),
-        }
-    };
-
-export const TodoAutoInspection: CodeInspectionRegistration<ProjectReview> = {
-    name: "TodoAutoInspection",
-    inspection: todosAsProjectReview,
-}
-
 const issueRepo: GitHubRepoRef = GitHubRepoRef.from({
     owner: "atomisthq",
     repo: "docs-issues",
 });
 
-const todoIssueCreationInspectionListener: ReviewListener = async (ri: ReviewListenerInvocation) => {
-    const todoComments: ReviewComment[] = ri.review.comments.filter(rc => rc.category === "todo");
-    const todosByFile = _.groupBy(todoComments, t => t.sourceLocation.path);
+const todoIssueCreation = async (
+    allCodeInspectionResults: Array<CodeInspectionResult<Todo[]>>,
+    inv: CommandListenerInvocation) => {
+    for (const oneProjectCodeInspectionResult of allCodeInspectionResults) {
+        const projectId = oneProjectCodeInspectionResult.repoId;
+        const todos = oneProjectCodeInspectionResult.result
+        const todosByFile = _.groupBy(todos, t => t.path);
 
-    for (const fileWithTodos in todosByFile) {
-        const relevantComments = todosByFile[fileWithTodos];
-        const title = `Improve ` + fileWithTodos;
-        const existingIssue = await findIssue(ri.credentials, issueRepo, title);
+        for (const fileWithTodos in todosByFile) {
+            const relevantTodos = todosByFile[fileWithTodos];
+            const title = `Improve ` + fileWithTodos;
+            const existingIssue = await findIssue(inv.credentials, issueRepo, title);
 
-        // there are some comments
-        if (!existingIssue) {
-            const issue: Issue = {
-                title,
-                body: `${bodyFormatter(relevantComments, ri.id as GitHubRepoRef)}`,
-            };
-            logger.info("Creating issue %j from review comment", issue);
-            await createIssue(ri.credentials, issueRepo, issue);
-        } else {
-            // Supplement the issue if necessary, reopening it if need be
-            const additionalTODOs = relevantComments.
-                filter(c => !reviewCommentInMarkdown(existingIssue.body, c))
-            if (additionalTODOs.length > 0) {
-                logger.info("Updating issue %d with the latest ", existingIssue.number);
-                const body = existingIssue.body + "\n" + bodyFormatter(additionalTODOs, ri.id as GitHubRepoRef)
-                try {
-                    await updateIssue(ri.credentials, issueRepo,
-                        {
-                            ...existingIssue,
-                            state: "open",
-                            body,
-                        });
-                } catch (x) {
-                    const e = x as Error;
-                    await ri.addressChannels("Warning: tried to update issue " + existingIssue.url + " but got an error: " + e.stack)
-                }
+            // there are some comments
+            if (!existingIssue) {
+                const issue: Issue = {
+                    title,
+                    body: `${bodyFormatter(relevantTodos, projectId as GitHubRepoRef)}`,
+                };
+                logger.info("Creating issue %j from review comment", issue);
+                await createIssue(inv.credentials, issueRepo, issue);
             } else {
-                logger.info("Not updating issue %d; no new TODOs detected", existingIssue.number);
+                // Supplement the issue if necessary, reopening it if need be
+                const additionalTODOs = relevantTodos.
+                    filter(c => !markdownIncludesTodo(existingIssue.body, c))
+                if (additionalTODOs.length > 0) {
+                    logger.info("Updating issue %d with the latest ", existingIssue.number);
+                    const body = existingIssue.body + "\n" + bodyFormatter(additionalTODOs, projectId as GitHubRepoRef)
+                    try {
+                        await updateIssue(inv.credentials, issueRepo,
+                            {
+                                ...existingIssue,
+                                state: "open",
+                                body,
+                            });
+                    } catch (x) {
+                        const e = x as Error;
+                        await inv.addressChannels("Warning: tried to update issue " + existingIssue.url + " but got an error: " + e.stack)
+                    }
+                } else {
+                    logger.info("Not updating issue %d; no new TODOs detected", existingIssue.number);
+                }
             }
         }
     }
 }
 
-export const TodoIssueListenerRegistration: ReviewListenerRegistration = {
+export const createIssueForTodos: CodeInspectionRegistration<Todo[]> = {
     name: "CreateIssueForTodos",
-    listener: todoIssueCreationInspectionListener,
+    intent: "create issues for TODOs",
+    inspection: listTodoCodeInspection,
+    onInspectionResults: todoIssueCreation,
 };
 
-export function bodyFormatter(reviewComments: ReviewComment[], grr: GitHubRepoRef): string {
+export function bodyFormatter(reviewComments: Todo[], grr: GitHubRepoRef): string {
     const header = `Automatically created by atomist/docs-sdm, based on ${grr.owner}/${grr.repo}@${grr.sha}\n`
-    return header + reviewComments.map(rc => reviewCommentToMarkdown(rc, grr)).join("");
+    return header + reviewComments.map(rc => todoToMarkdown(rc, grr)).join("");
 }
 
-function reviewCommentToMarkdown(c: ReviewComment, grr: GitHubRepoRef): string {
-    const loc = deepLinkToComment(c, grr);
-    return `- [ ] ${loc} \`${c.detail}\`\n`;
+function todoToMarkdown(c: Todo, grr: GitHubRepoRef): string {
+    const loc = deepLinkToTodo(c, grr);
+    return `- [ ] ${loc} \`${c.lineContent}\`\n`;
 }
 
-function deepLinkToComment(c: ReviewComment, grr: GitHubRepoRef): string {
+function deepLinkToTodo(c: Todo, grr: GitHubRepoRef): string {
     let loc: string = "";
-    if (c.sourceLocation && c.sourceLocation.path) {
-        const line = (c.sourceLocation.lineFrom1) ? `:${c.sourceLocation.lineFrom1}` : "";
-        loc = "`" + c.sourceLocation.path + line + "`";
-        const url = deepLink(grr, c.sourceLocation);
-        loc = `[${loc}](${url})`;
-        loc += ": ";
-    }
+    const line = (c.lineFrom1) ? `:${c.lineFrom1}` : "";
+    loc = "`" + c.path + line + "`";
+    const url = deepLink(grr, { lineFrom1: c.lineFrom1, path: c.path, offset: undefined });
+    loc = `[${loc}](${url})`;
+    loc += ": ";
     return loc;
 }
 
-export function reviewCommentInMarkdown(body: string, rc: ReviewComment): boolean {
-    const reString = `\\b${rc.sourceLocation.lineFrom1}\\b.*${escapeStringRegexp(rc.detail)}\`?$`;
+export function markdownIncludesTodo(body: string, rc: Todo): boolean {
+    const reString = `\\b${rc.lineFrom1}\\b.*${escapeStringRegexp(rc.lineContent)}\`?$`;
     // console.log("reString = " + reString);
     const r = new RegExp(reString, "m");
     // console.log("r = " + r);
