@@ -27,7 +27,10 @@ import {
     ProjectAwareGoalInvocation,
     slackErrorMessage,
 } from "@atomist/sdm";
-import { Attachment, SlackMessage } from "@atomist/slack-messages";
+import {
+    Attachment,
+    SlackMessage,
+} from "@atomist/slack-messages";
 import { Credentials, S3 } from "aws-sdk";
 import * as mime from "mime-types";
 import { promisify } from "util";
