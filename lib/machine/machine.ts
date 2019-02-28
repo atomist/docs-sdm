@@ -28,8 +28,8 @@ import {
     PushTest,
     SoftwareDeliveryMachine,
     SoftwareDeliveryMachineConfiguration,
-    whenPushSatisfies,
     ToDefaultBranch,
+    whenPushSatisfies,
 } from "@atomist/sdm";
 import {
     createSoftwareDeliveryMachine,
