@@ -29,6 +29,7 @@ import {
     SoftwareDeliveryMachine,
     SoftwareDeliveryMachineConfiguration,
     whenPushSatisfies,
+    ToDefaultBranch,
 } from "@atomist/sdm";
 import {
     createSoftwareDeliveryMachine,
@@ -89,7 +90,7 @@ export function machine(
         .with(mkdocsBuilderRegistration());
 
     const strictMkdocsBuild = goal(
-        { displayName: "mkdocs strict" },
+        { displayName: "mkdocs strict", },
         executeMkdocsStrict);
 
     const htmltest = goal(
@@ -114,6 +115,11 @@ export function machine(
         .plan(publish).after(build)
         .plan(htmltest).after(publish);
 
+    const officialPublish = goals("Release site")
+        .plan(goal({ uniqueName: "publish for realz", preApproval: true },
+            async (inv) => { inv.addressChannels("Pretend I just published this") }
+        )).after(strictMkdocsBuild, publish, htmltest)
+
     sdm.withPushRules(
         whenPushSatisfies(allOf(IsMkdocsProject, not(isMaterialChange({
             extensions: ["html", "js"],
@@ -123,6 +129,8 @@ export function machine(
             .setGoals(ImmaterialGoals.andLock()),
         whenPushSatisfies(IsMkdocsProject)
             .setGoals(mkDocsGoals),
+        whenPushSatisfies(IsMkdocsProject, ToDefaultBranch)
+            .setGoals(officialPublish),
     );
 
     sdm.addGeneratorCommand(MkdocsSiteGenerator);
