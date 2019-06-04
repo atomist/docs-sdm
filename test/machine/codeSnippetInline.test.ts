@@ -43,7 +43,10 @@ const GeneratorMarkdown = `
 
 <!-- atomist:code-snippet:start=lib/sdm/dotnetCore.ts#dotnetGenerator -->
 \`\`\`typescript
-import { HandlerResult, NoParameters } from "@atomist/automation-client";
+import {
+    HandlerResult,
+    NoParameters,
+} from "@atomist/automation-client";
 import { CommandListenerInvocation } from "@atomist/sdm";
 export async function helloWorldListener(ci: CommandListenerInvocation<NoParameters>): Promise<void> {
     return ci.addressChannels("Hello, world");
