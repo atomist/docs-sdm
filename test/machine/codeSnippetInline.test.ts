@@ -19,8 +19,8 @@ import {
     GitProject,
     InMemoryProject,
 } from "@atomist/automation-client";
-import { CodeSnippetInlineTransform } from "../../lib/machine/codeSnippetInline";
 import * as assert from "assert";
+import { CodeSnippetInlineTransform } from "../../lib/machine/codeSnippetInline";
 
 describe("CodeSnippetInlineTransform", () => {
 

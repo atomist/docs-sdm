@@ -41,7 +41,7 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
         RefRegexp.lastIndex = 0;
         let match = RefRegexp.exec(content);
         while (!!match) {
-            const href = match[1] as string;
+            const href = match[1];
             const file = href.split("#")[0];
             const name = href.split("#")[1];
 
