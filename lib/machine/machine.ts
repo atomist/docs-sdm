@@ -48,6 +48,7 @@ import {
     AlphabetizeGlossaryAutofix,
     AlphabetizeGlossaryCommand,
 } from "./alphabetizeGlossary";
+import { CodeSnippetInlineAutofix } from "./codeSnippetInline";
 import {
     PutTbdInEmptySectionsAutofix,
     PutTbdInEmptySectionsCommand,
@@ -85,6 +86,7 @@ export function machine(
 
     const autofix = new Autofix().with(PutTbdInEmptySectionsAutofix)
         .with(AlphabetizeGlossaryAutofix)
+        .with(CodeSnippetInlineAutofix)
         .with(lintAutofix);
 
     const fingerprint = new Fingerprint().with(TbdFingerprinterRegistration)
