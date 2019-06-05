@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "newLine": "LF",
-    "target": "ES2016",
+    "target": "ES2018",
     "module": "CommonJS",
     "moduleResolution": "Node",
     "jsx": "react",
