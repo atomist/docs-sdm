@@ -16,47 +16,78 @@
 
 import {
     DefaultHttpClientFactory,
-    GitProject,
     InMemoryProject,
+    NoParameters,
 } from "@atomist/automation-client";
+import { ProgressLog, PushAwareParametersInvocation, TransformResult } from "@atomist/sdm";
 import * as assert from "assert";
 import { CodeSnippetInlineTransform } from "../../lib/machine/codeSnippetInline";
+
+class FakeProgressLog implements ProgressLog {
+    constructor() {
+    }
+    public name: string; public url?: string;
+    public flush(): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+    public close(): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
+    public isAvailable(): Promise<boolean> {
+        throw new Error("Method not implemented.");
+    }
+    public write = (log: string): void => {
+        this.log = this.log + log;
+    }
+    public log?: string = "";
+    public stripAnsi?: boolean;
+
+}
+
+function fakeInvocation(): PushAwareParametersInvocation<NoParameters> {
+    return {
+        progressLog: new FakeProgressLog(),
+        configuration: { http: { client: { factory: DefaultHttpClientFactory } } },
+    } as any;
+}
 
 describe("CodeSnippetInlineTransform", () => {
 
     it("should inline all referenced code snippets", async () => {
-        const projectWithMarkdownFile = InMemoryProject.of({ path: "docs/Generator.md", content: GeneratorMarkdown });
+        const fakeInv = fakeInvocation();
+        const projectWithMarkdownFile = InMemoryProject.of({ path: "docs/Generator.md", content: generatorMarkdown() });
         const result = (await CodeSnippetInlineTransform(
-            projectWithMarkdownFile,
-            { configuration: { http: { client: { factory: DefaultHttpClientFactory } } } } as any)) as GitProject;
-        const mdFile = await result.getFile("docs/Generator.md");
+            projectWithMarkdownFile, fakeInv,
+        )) as TransformResult;
+        assert(result.success);
+        const mdFile = await projectWithMarkdownFile.getFile("docs/Generator.md");
         const mdContent = await mdFile.getContent();
         assert(mdContent.includes("DotnetCoreGenerator"));
+        assert(fakeInv.progressLog.log.includes("Snippets replaced:\nname: dotnetGenerator"), fakeInv.progressLog.log);
+    });
+
+    it("should fail if a snippet is not found in the file", async () => {
+        const projectWithMarkdownFile = InMemoryProject.of({
+            path: "docs/Generator.md",
+            content: generatorMarkdown("poo"),
+        });
+        const result = await CodeSnippetInlineTransform(
+            projectWithMarkdownFile, fakeInvocation(),
+        ) as TransformResult;
+        assert(!result.success);
+        assert.strictEqual(result.error.message, "Snippets not found:\nname: poo in file: lib/sdm/dotnetCore.ts");
     });
 
 });
 
-const GeneratorMarkdown = `
+function generatorMarkdown(snippetName: string = "dotnetGenerator"): string {
+    return `
 
 # This is a sample docs page referencing a code snippet
 
-
-<!-- atomist:code-snippet:start=lib/sdm/dotnetCore.ts#dotnetGenerator -->
-\`\`\`typescript
-import {
-    HandlerResult,
-    NoParameters,
-} from "@atomist/automation-client";
-import { CommandListenerInvocation } from "@atomist/sdm";
-export async function helloWorldListener(ci: CommandListenerInvocation<NoParameters>): Promise<void> {
-    return ci.addressChannels("Hello, world");
-}
-\`\`\`
-<!-- atomist:code-snippet:end-->
-
 Some more text to make it more interesting
 
-<!-- atomist:code-snippet:start=lib/sdm/dotnetCore.ts#dotnetGenerator -->
+<!-- atomist:code-snippet:start=lib/sdm/dotnetCore.ts#${snippetName} -->
 \`\`\`typescript
 Just some other text
 \`\`\`
@@ -64,3 +95,4 @@ Just some other text
 
 And even more text
 `;
+}

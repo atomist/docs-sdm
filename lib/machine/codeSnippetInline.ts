@@ -16,6 +16,7 @@
 
 import {
     HttpMethod,
+    logger,
     projectUtils,
 } from "@atomist/automation-client";
 import {
@@ -29,12 +30,23 @@ const RefRegexp: RegExp =
 
 const SnippetRegexp = /\/\/[\s]*atomist:code-snippet:start=([\S]*)([\s\S]*)\/\/[\s]*atomist:code-snippet:end[\s]*/gm;
 
+interface CodeSnippetInlineOutcome {
+    did: "replaced" | "snippetNotFound";
+    where: {
+        markdownFilepath: string,
+        sampleFilepath: string,
+        snippetName: string,
+    };
+}
+
 /**
  * CodeTransform to inline referenced code snippets
  */
 export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
     const url = "https://raw.githubusercontent.com/atomist/samples/master";
     const httpClient = papi.configuration.http.client.factory.create(url);
+    const writeToLog = papi.progressLog ? papi.progressLog.write : logger.info;
+    const outcomes: CodeSnippetInlineOutcome[] = [];
 
     await projectUtils.doWithFiles(p, "**/*.md", async f => {
         let content = await f.getContent();
@@ -51,8 +63,10 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
 
             SnippetRegexp.lastIndex = 0;
             let sampleMatch = SnippetRegexp.exec(sample);
+            let found = false;
             while (!!sampleMatch) {
                 if (sampleMatch[1] === name) {
+                    found = true;
                     content = content.replace(
                         match[0],
                         `<!-- atomist:code-snippet:start=${href} -->
@@ -60,15 +74,48 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
 ${sampleMatch[2].trim()}
 \`\`\`
 <!-- atomist:code-snippet:end -->`);
+                    outcomes.push({
+                        did: "replaced",
+                        where: {
+                            markdownFilepath: f.path,
+                            sampleFilepath: file,
+                            snippetName: name,
+                        },
+                    });
                 }
                 sampleMatch = SnippetRegexp.exec(sample);
+            }
+            if (!found) {
+                outcomes.push({
+                    did: "snippetNotFound",
+                    where: {
+                        markdownFilepath: f.path,
+                        sampleFilepath: file,
+                        snippetName: name,
+                    },
+                });
             }
             match = RefRegexp.exec(content);
         }
         await f.setContent(content);
     });
 
-    return p;
+    const printReplacedSnippets = `Snippets replaced:\n` +
+        outcomes.filter(o => o.did === "replaced")
+            .map(o => `name: ${o.where.snippetName} from file: ${o.where.sampleFilepath} in markdown: ${o.where.markdownFilepath}`).join("\n");
+    writeToLog(printReplacedSnippets);
+
+    const unfoundSnippets = outcomes.filter(o => o.did === "snippetNotFound");
+    if (unfoundSnippets.length > 0) {
+        const printUnfoundSnippets = `Snippets not found:\n` +
+            unfoundSnippets.map(o => `name: ${o.where.snippetName} in file: ${o.where.sampleFilepath}`).join("\n");
+        writeToLog(printUnfoundSnippets);
+        return {
+            target: p, success: false, error: new Error(printUnfoundSnippets),
+        };
+    }
+
+    return { target: p, success: true };
 };
 
 export const CodeSnippetInlineAutofix: AutofixRegistration = {
