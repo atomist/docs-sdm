@@ -55,10 +55,14 @@ describe("CodeSnippetInlineTransform", () => {
 
     // before I implement this, I really need to fake the HTTP call
     // because otherwise the tests are super fragile depending on the contents
-    // of the sample repo.
+    // of the sample repo... or I could run the transform twice
     it.skip("should not be edited if the snippet was already correct");
 
     it.skip("Can replace two snippet references");
+
+    it.skip("Inserts a warning when a sample file was not found");
+
+    it.skip("Inserts a link to the code sample in the file");
 
     it("should inline all referenced code snippets", async () => {
         const fakeInv = fakeInvocation();
@@ -98,11 +102,12 @@ describe("CodeSnippetInlineTransform", () => {
             projectWithMarkdownFile, fakeInv,
         ) as TransformResult;
         assert(secondResult.success, "should be successful");
-        assert(!secondResult.edited, "should not be edited");
         assert(fakeInv.progressLog.log.includes("Snippets not found:\nname: poo in file: lib/sdm/dotnetCore.ts"));
 
         const snippetAfterSecondEdit = parseSnippetReferences(projectWithMarkdownFile, "docs/Generator.md")[0];
         assert.deepStrictEqual(snippetAfterSecondEdit, snippetAfterEdit);
+        assert(!secondResult.edited, "should not be edited");
+
     });
 
 });
