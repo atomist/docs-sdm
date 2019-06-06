@@ -80,6 +80,7 @@ interface CodeSnippetInlineOutcome {
         sampleFilepath: string,
         snippetName: string,
     };
+    edited: boolean;
 }
 
 /**
@@ -105,20 +106,23 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
 
             const sampleMatchReports = Array.from(SnippetMicrogrammar(name).matchReportIterator(sample));
             const found = sampleMatchReports.length > 0;
-            function contentOfSnippet(mr: SuccessfulMatchReport): string {
-                const snippetFound = toValueStructure<SnippetFound>(mr);
-                return `\`\`\`typescript
-${snippetFound.snippetContent}
-\`\`\``;
-            }
+
             const replacementMiddle = found ? contentOfSnippet(sampleMatchReports[0]) : snippetReference.middle;
             const commentContent = found ? `Snippet ${name} found in ${file}` : `Warning: snippet '${name}' not found in ${file}`;
-            content = content.replace(
-                referenceMatch.matched,
-                `<!-- atomist:code-snippet:start=${file}#${name} -->
+
+            const currentCommentContent = snippetReference.snippetComment ? snippetReference.snippetComment.snippetCommentContent : "";
+
+            const needsUpdate = snippetReference.middle.trim() !== replacementMiddle.trim() ||
+                currentCommentContent.trim() !== commentContent.trim();
+
+            if (needsUpdate) {
+                const newSnippetReference = `<!-- atomist:code-snippet:start=${file}#${name} -->
 ${replacementMiddle.trim()}
 <!-- atomist:docs-sdm:codeSnippetInline: ${commentContent} -->
-<!-- atomist:code-snippet:end -->`);
+<!-- atomist:code-snippet:end -->`;
+                content = content.replace(referenceMatch.matched, newSnippetReference);
+            }
+
             outcomes.push({
                 did: found ? "replaced" : "snippetNotFound",
                 where: {
@@ -126,25 +130,38 @@ ${replacementMiddle.trim()}
                     sampleFilepath: file,
                     snippetName: name,
                 },
+                edited: needsUpdate,
             });
         }
         await f.setContent(content);
     });
 
+    reportOutcomes(outcomes, writeToLog);
+
+    const edited = !!outcomes.find(o => o.edited);
+
+    return { target: p, success: true, edited };
+};
+
+function reportOutcomes(outcomes: CodeSnippetInlineOutcome[], writeToLog: (log: string, ...args: any[]) => void): void {
     const printReplacedSnippets = `Snippets replaced:\n` +
         outcomes.filter(o => o.did === "replaced")
             .map(o => `name: ${o.where.snippetName} from file: ${o.where.sampleFilepath} in markdown: ${o.where.markdownFilepath}`).join("\n");
     writeToLog(printReplacedSnippets);
-
     const unfoundSnippets = outcomes.filter(o => o.did === "snippetNotFound");
     if (unfoundSnippets.length > 0) {
         const printUnfoundSnippets = `Snippets not found:\n` +
             unfoundSnippets.map(o => `name: ${o.where.snippetName} in file: ${o.where.sampleFilepath}`).join("\n");
         writeToLog(printUnfoundSnippets);
     }
+}
 
-    return { target: p, success: true, edited: true };
-};
+function contentOfSnippet(mr: SuccessfulMatchReport): string {
+    const snippetFound = toValueStructure<SnippetFound>(mr);
+    return `\`\`\`typescript
+${snippetFound.snippetContent}
+\`\`\``;
+}
 
 export const CodeSnippetInlineAutofix: AutofixRegistration = {
     name: "code inline",
