@@ -19,8 +19,16 @@ import {
     logger,
     projectUtils,
 } from "@atomist/automation-client";
-import { microgrammar, Microgrammar, optional, takeUntil } from "@atomist/microgrammar";
-import { SuccessfulMatchReport, toValueStructure } from "@atomist/microgrammar/lib/MatchReport";
+import {
+    microgrammar,
+    Microgrammar,
+    optional,
+    takeUntil,
+} from "@atomist/microgrammar";
+import {
+    SuccessfulMatchReport,
+    toValueStructure,
+} from "@atomist/microgrammar/lib/MatchReport";
 import {
     AutofixRegistration,
     CodeTransform,

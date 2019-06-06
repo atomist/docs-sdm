@@ -21,9 +21,18 @@ import {
     Project,
 } from "@atomist/automation-client";
 import { toValueStructure } from "@atomist/microgrammar/lib/MatchReport";
-import { ProgressLog, PushAwareParametersInvocation, TransformResult } from "@atomist/sdm";
+import {
+    ProgressLog,
+    PushAwareParametersInvocation,
+    TransformResult,
+} from "@atomist/sdm";
 import * as assert from "assert";
-import { CodeSnippetInlineTransform, RefMicrogrammar, SnippetMicrogrammar, SnippetReference } from "../../lib/machine/codeSnippetInline";
+import {
+    CodeSnippetInlineTransform,
+    RefMicrogrammar,
+    SnippetMicrogrammar,
+    SnippetReference,
+} from "../../lib/machine/codeSnippetInline";
 
 class FakeProgressLog implements ProgressLog {
     public name: string; public url?: string;
