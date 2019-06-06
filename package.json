@@ -27,7 +27,7 @@
   "dependencies": {
     "@atomist/automation-client": "^1.4.1-remove-remote-repo-ref-from.20190417141720",
     "@atomist/automation-client-ext-logzio": "^1.0.1",
-    "@atomist/microgrammar": "^1.2.0-master.20190228205313",
+    "@atomist/microgrammar": "^1.2.1-master.20190320034523",
     "@atomist/sdm": "^1.5.0-master.20190419141554",
     "@atomist/sdm-core": "^1.5.0-master.20190425215945",
     "@atomist/sdm-pack-build": "^1.0.3",

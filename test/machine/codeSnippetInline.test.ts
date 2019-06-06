@@ -18,14 +18,14 @@ import {
     DefaultHttpClientFactory,
     InMemoryProject,
     NoParameters,
+    Project,
 } from "@atomist/automation-client";
+import { toValueStructure } from "@atomist/microgrammar/lib/MatchReport";
 import { ProgressLog, PushAwareParametersInvocation, TransformResult } from "@atomist/sdm";
 import * as assert from "assert";
-import { CodeSnippetInlineTransform } from "../../lib/machine/codeSnippetInline";
+import { CodeSnippetInlineTransform, RefMicrogrammar, SnippetMicrogrammar, SnippetReference } from "../../lib/machine/codeSnippetInline";
 
 class FakeProgressLog implements ProgressLog {
-    constructor() {
-    }
     public name: string; public url?: string;
     public flush(): Promise<void> {
         throw new Error("Method not implemented.");
@@ -53,6 +53,13 @@ function fakeInvocation(): PushAwareParametersInvocation<NoParameters> {
 
 describe("CodeSnippetInlineTransform", () => {
 
+    // before I implement this, I really need to fake the HTTP call
+    // because otherwise the tests are super fragile depending on the contents
+    // of the sample repo.
+    it.skip("should not be edited if the snippet was already correct");
+
+    it.skip("Can replace two snippet references");
+
     it("should inline all referenced code snippets", async () => {
         const fakeInv = fakeInvocation();
         const projectWithMarkdownFile = InMemoryProject.of({ path: "docs/Generator.md", content: generatorMarkdown() });
@@ -60,25 +67,52 @@ describe("CodeSnippetInlineTransform", () => {
             projectWithMarkdownFile, fakeInv,
         )) as TransformResult;
         assert(result.success);
+        assert(result.edited, "should be edited");
         const mdFile = await projectWithMarkdownFile.getFile("docs/Generator.md");
         const mdContent = await mdFile.getContent();
         assert(mdContent.includes("DotnetCoreGenerator"));
         assert(fakeInv.progressLog.log.includes("Snippets replaced:\nname: dotnetGenerator"), fakeInv.progressLog.log);
     });
 
-    it("should fail if a snippet is not found in the file", async () => {
+    it("should add a comment about notFound if a snippet is inserted, but only once", async () => {
+        const fakeInv = fakeInvocation();
         const projectWithMarkdownFile = InMemoryProject.of({
             path: "docs/Generator.md",
             content: generatorMarkdown("poo"),
         });
+        const snippetBeforeEdit = parseSnippetReferences(projectWithMarkdownFile, "docs/Generator.md")[0];
         const result = await CodeSnippetInlineTransform(
-            projectWithMarkdownFile, fakeInvocation(),
+            projectWithMarkdownFile, fakeInv,
         ) as TransformResult;
-        assert(!result.success);
-        assert.strictEqual(result.error.message, "Snippets not found:\nname: poo in file: lib/sdm/dotnetCore.ts");
+        assert(result.success, "should be successful");
+        assert(result.edited, "should be edited");
+        assert(fakeInv.progressLog.log.includes("Snippets not found:\nname: poo in file: lib/sdm/dotnetCore.ts"));
+
+        const snippetAfterEdit = parseSnippetReferences(projectWithMarkdownFile, "docs/Generator.md")[0];
+        assert.strictEqual(snippetAfterEdit.middle.trim(), snippetBeforeEdit.middle.trim());
+        assert.strictEqual(snippetAfterEdit.snippetComment.snippetCommentContent.trim(),
+            "Warning: snippet 'poo' not found in lib/sdm/dotnetCore.ts");
+
+        // run again on same project. Should not change it
+        const secondResult = await CodeSnippetInlineTransform(
+            projectWithMarkdownFile, fakeInv,
+        ) as TransformResult;
+        assert(secondResult.success, "should be successful");
+        assert(!secondResult.edited, "should not be edited");
+        assert(fakeInv.progressLog.log.includes("Snippets not found:\nname: poo in file: lib/sdm/dotnetCore.ts"));
+
+        const snippetAfterSecondEdit = parseSnippetReferences(projectWithMarkdownFile, "docs/Generator.md")[0];
+        assert.deepStrictEqual(snippetAfterSecondEdit, snippetAfterEdit);
     });
 
 });
+
+function parseSnippetReferences(p: Project, filename: string): SnippetReference[] {
+    const mdContent = p.findFileSync(filename).getContentSync();
+    const results = Array.from(RefMicrogrammar.matchReportIterator(mdContent));
+    // tslint:disable-next-line:no-unnecessary-callback-wrapper
+    return results.map(match => toValueStructure<SnippetReference>(match));
+}
 
 function generatorMarkdown(snippetName: string = "dotnetGenerator"): string {
     return `
@@ -96,3 +130,86 @@ Just some other text
 And even more text
 `;
 }
+
+describe("microgrammar for parsing snippet reference", () => {
+    it("can parse it", async () => {
+        const results = Array.from(RefMicrogrammar.matchReportIterator(generatorMarkdown("snippetypoo")));
+        assert.strictEqual(results.length, 1);
+        const match = results[0];
+        const valueStructure = toValueStructure(match);
+
+        assert.deepStrictEqual(valueStructure, {
+            href: {
+                filepath: "lib/sdm/dotnetCore.ts",
+                snippetName: "snippetypoo",
+            },
+            middle: `\`\`\`typescript
+Just some other text
+\`\`\`
+`,
+            snippetComment: undefined,
+        });
+    });
+});
+
+function realSnippetFile(snippetName: string) {
+    return `
+/* Let's just pull out this little chunk
+ *               docker daemon. Please make sure to configure your terminal for
+ *               docker access.</p>
+ */
+
+// atomist:code-snippet:start=${snippetName}
+/**
+ * .NET Core generator registration
+ */
+const DotnetCoreGenerator: GeneratorRegistration = {
+    name: "DotnetCoreGenerator",
+    intent: "create dotnet-core project",
+    description: "Creates a new .NET Core project",
+    tags: ["dotnet"],
+    autoSubmit: true,
+    startingPoint: GitHubRepoRef.from({ owner: "atomist-seeds", repo: "dotnet-core-service", branch: "master" }),
+    transform: [
+        UpdateReadmeTitle,
+        replaceSeedSlug("atomist-seeds", "dotnet-core-service"),
+        DotnetCoreProjectFileCodeTransform,
+    ],
+};
+// atomist:code-snippet:end
+
+export const configuration = configure(async sdm => {
+
+    // Register the generator with the SDM
+`;
+}
+
+describe("microgrammar for parsing snippet content", () => {
+    it("can parse a real snippet", async () => {
+        const snippetName = "dotnetGenerator";
+        const results = Array.from(SnippetMicrogrammar(snippetName).matchReportIterator(realSnippetFile(snippetName)));
+        assert.strictEqual(results.length, 1);
+        const match = results[0];
+        const valueStructure = toValueStructure(match);
+
+        assert.deepStrictEqual(valueStructure, {
+            snippetName,
+            snippetContent: `/**
+ * .NET Core generator registration
+ */
+const DotnetCoreGenerator: GeneratorRegistration = {
+    name: "DotnetCoreGenerator",
+    intent: "create dotnet-core project",
+    description: "Creates a new .NET Core project",
+    tags: ["dotnet"],
+    autoSubmit: true,
+    startingPoint: GitHubRepoRef.from({ owner: "atomist-seeds", repo: "dotnet-core-service", branch: "master" }),
+    transform: [
+        UpdateReadmeTitle,
+        replaceSeedSlug("atomist-seeds", "dotnet-core-service"),
+        DotnetCoreProjectFileCodeTransform,
+    ],
+};`,
+        });
+    });
+});

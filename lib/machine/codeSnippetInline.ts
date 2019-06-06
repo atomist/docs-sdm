@@ -19,16 +19,59 @@ import {
     logger,
     projectUtils,
 } from "@atomist/automation-client";
+import { microgrammar, Microgrammar, optional, takeUntil } from "@atomist/microgrammar";
+import { SuccessfulMatchReport, toValueStructure } from "@atomist/microgrammar/lib/MatchReport";
 import {
     AutofixRegistration,
     CodeTransform,
     hasFileWithExtension,
 } from "@atomist/sdm";
 
-const RefRegexp: RegExp =
-    /<!--[\s]*atomist:code-snippet:start=(\S*)[\s]*-->[\s\S]*?<!--[\s]*atomist:code-snippet:end[\s]*-->/gm;
+export interface SnippetReference {
+    href: {
+        filepath: string,
+        snippetName: string,
+    };
+    middle: string;
+    snippetComment: {
+        snippetCommentContent: string,
+    };
+}
+export const RefMicrogrammar: Microgrammar<SnippetReference> = microgrammar({
+    // tslint:disable-next-line:no-invalid-template-strings
+    phrase: `<!-- atomist:code-snippet:start=\${href} -->
+    \${middle}
+    \${snippetComment}
+    <!-- atomist:code-snippet:end -->`
+    , terms: {
+        href: {
+            filepath: /[^#]*/,
+            _hash: "#",
+            snippetName: /\S*/,
+        },
+        middle: takeUntil("<!-- atomist:"),
+        snippetComment: optional(microgrammar({
+            // tslint:disable-next-line:no-invalid-template-strings
+            phrase: "<!-- atomist:docs-sdm:codeSnippetInline:${snippetCommentContent} -->",
+        })),
+    },
+}) as Microgrammar<SnippetReference>;
 
-const SnippetRegexp = /\/\/[\s]*atomist:code-snippet:start=([\S]*)([\s\S]*)\/\/[\s]*atomist:code-snippet:end[\s]*/gm;
+export interface SnippetFound {
+    snippetName: string;
+    snippetContent: string;
+}
+export function SnippetMicrogrammar(snippetName: string): Microgrammar<SnippetFound> {
+    return microgrammar({
+        // tslint:disable-next-line:no-invalid-template-strings
+        phrase: `// atomist:code-snippet:start=\${snippetName}
+\${snippetContent}
+// atomist:code-snippet:end`,
+        terms: {
+            snippetName,
+        },
+    }) as Microgrammar<SnippetFound>;
+}
 
 interface CodeSnippetInlineOutcome {
     did: "replaced" | "snippetNotFound";
@@ -50,52 +93,40 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
 
     await projectUtils.doWithFiles(p, "**/*.md", async f => {
         let content = await f.getContent();
-        RefRegexp.lastIndex = 0;
-        let match = RefRegexp.exec(content);
-        while (!!match) {
-            const href = match[1];
-            const file = href.split("#")[0];
-            const name = href.split("#")[1];
+        const referenceMatchReports = RefMicrogrammar.matchReportIterator(content);
+        for await (const referenceMatch of referenceMatchReports) {
+            const snippetReference = toValueStructure<SnippetReference>(referenceMatch);
+            const file = snippetReference.href.filepath;
+            const name = snippetReference.href.snippetName;
 
             const sample = (await httpClient.exchange<string>(
                 `${url}/${file}`,
                 { method: HttpMethod.Get })).body;
 
-            SnippetRegexp.lastIndex = 0;
-            let sampleMatch = SnippetRegexp.exec(sample);
-            let found = false;
-            while (!!sampleMatch) {
-                if (sampleMatch[1] === name) {
-                    found = true;
-                    content = content.replace(
-                        match[0],
-                        `<!-- atomist:code-snippet:start=${href} -->
-\`\`\`typescript
-${sampleMatch[2].trim()}
-\`\`\`
+            const sampleMatchReports = Array.from(SnippetMicrogrammar(name).matchReportIterator(sample));
+            const found = sampleMatchReports.length > 0;
+            function contentOfSnippet(mr: SuccessfulMatchReport): string {
+                const snippetFound = toValueStructure<SnippetFound>(mr);
+                return `\`\`\`typescript
+${snippetFound.snippetContent}
+\`\`\``;
+            }
+            const replacementMiddle = found ? contentOfSnippet(sampleMatchReports[0]) : snippetReference.middle;
+            const commentContent = found ? `Snippet ${name} found in ${file}` : `Warning: snippet '${name}' not found in ${file}`;
+            content = content.replace(
+                referenceMatch.matched,
+                `<!-- atomist:code-snippet:start=${file}#${name} -->
+${replacementMiddle.trim()}
+<!-- atomist:docs-sdm:codeSnippetInline: ${commentContent} -->
 <!-- atomist:code-snippet:end -->`);
-                    outcomes.push({
-                        did: "replaced",
-                        where: {
-                            markdownFilepath: f.path,
-                            sampleFilepath: file,
-                            snippetName: name,
-                        },
-                    });
-                }
-                sampleMatch = SnippetRegexp.exec(sample);
-            }
-            if (!found) {
-                outcomes.push({
-                    did: "snippetNotFound",
-                    where: {
-                        markdownFilepath: f.path,
-                        sampleFilepath: file,
-                        snippetName: name,
-                    },
-                });
-            }
-            match = RefRegexp.exec(content);
+            outcomes.push({
+                did: found ? "replaced" : "snippetNotFound",
+                where: {
+                    markdownFilepath: f.path,
+                    sampleFilepath: file,
+                    snippetName: name,
+                },
+            });
         }
         await f.setContent(content);
     });
@@ -110,16 +141,16 @@ ${sampleMatch[2].trim()}
         const printUnfoundSnippets = `Snippets not found:\n` +
             unfoundSnippets.map(o => `name: ${o.where.snippetName} in file: ${o.where.sampleFilepath}`).join("\n");
         writeToLog(printUnfoundSnippets);
-        return {
-            target: p, success: false, error: new Error(printUnfoundSnippets),
-        };
     }
 
-    return { target: p, success: true };
+    return { target: p, success: true, edited: true };
 };
 
 export const CodeSnippetInlineAutofix: AutofixRegistration = {
     name: "code inline",
     pushTest: hasFileWithExtension("md"),
     transform: CodeSnippetInlineTransform,
+    options: {
+        ignoreFailure: false,
+    },
 };
