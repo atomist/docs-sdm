@@ -108,42 +108,6 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
             const file = snippetReference.href.filepath;
             const name = snippetReference.href.snippetName;
 
-            // const whatToDo: {
-            //     do: "replace" | "sampleFileNotFound" | "snippetNotFound",
-            //     commentContent: string,
-            //     snippetContent?: string,
-            // } = Either.of(`${url}/${file}`).map(fetchFile).leftMap(httpError => ({
-            //     do: "sampleFileNotFound",
-            //     commentContent: `Failed to retrieve ${url}/${file}, status ${httpError.status}`,
-            // })).map(findSnippet(name)).leftMap(() => ({
-            //     do: "snippetNotFound",
-            //     commentContent: `Warning: snippet '${name}' not found in ${file}`,
-            // }
-            // )).map(snippet => ({
-            //     do: "replace",
-            //     commentContent: `Snippet ${name} found in ${file}`,
-            //     snippetContent: contentOfSnippet(snippet),
-            // })).cata(identity, identity);
-
-
-            // const whatToDo: {
-            //     do: "replace" | "sampleFileNotFound" | "snippetNotFound",
-            //     commentContent: string,
-            //     snippetContent?: string,
-            // } = startWith(fetchFile(`${url}/${file}`).orElse({
-            //     do: "sampleFileNotFound",
-            //     commentContent: `Failed to retrieve ${url}/${file}`,
-            // })).andWhenThatWorks(findSnippet(name).orElse(
-            //     {
-            //         do: "snippetNotFound",
-            //         commentContent: `Warning: snippet '${name}' not found in ${file}`,
-            //     },
-            // )).andWhenThatWorks(snippet => ({
-            //     do: "replace",
-            //     commentContent: `Snippet ${name} found in ${file}`,
-            //     snippetContent: contentOfSnippet(snippet),
-            // }));
-
             async function whatToSubstitute(sampleFileUrl: string, snippetName: string): Promise<{
                 do: "replace" | "sampleFileNotFound" | "snippetNotFound",
                 commentContent: string,
