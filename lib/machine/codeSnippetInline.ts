@@ -82,7 +82,7 @@ export function SnippetMicrogrammar(snippetName: string): Microgrammar<SnippetFo
 }
 
 interface CodeSnippetInlineOutcome {
-    did: "replaced" | "snippetNotFound";
+    did: "replace" | "snippetNotFound" | "sampleFileNotFound";
     where: {
         markdownFilepath: string,
         sampleFilepath: string,
@@ -108,31 +108,91 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
             const file = snippetReference.href.filepath;
             const name = snippetReference.href.snippetName;
 
-            const sample = (await httpClient.exchange<string>(
-                `${url}/${file}`,
-                { method: HttpMethod.Get })).body;
+            // const whatToDo: {
+            //     do: "replace" | "sampleFileNotFound" | "snippetNotFound",
+            //     commentContent: string,
+            //     snippetContent?: string,
+            // } = Either.of(`${url}/${file}`).map(fetchFile).leftMap(httpError => ({
+            //     do: "sampleFileNotFound",
+            //     commentContent: `Failed to retrieve ${url}/${file}, status ${httpError.status}`,
+            // })).map(findSnippet(name)).leftMap(() => ({
+            //     do: "snippetNotFound",
+            //     commentContent: `Warning: snippet '${name}' not found in ${file}`,
+            // }
+            // )).map(snippet => ({
+            //     do: "replace",
+            //     commentContent: `Snippet ${name} found in ${file}`,
+            //     snippetContent: contentOfSnippet(snippet),
+            // })).cata(identity, identity);
 
-            const sampleMatchReports = Array.from(SnippetMicrogrammar(name).matchReportIterator(sample));
-            const found = sampleMatchReports.length > 0;
 
-            const replacementMiddle = found ? contentOfSnippet(sampleMatchReports[0]) : snippetReference.middle;
-            const commentContent = found ? `Snippet ${name} found in ${file}` : `Warning: snippet '${name}' not found in ${file}`;
+            // const whatToDo: {
+            //     do: "replace" | "sampleFileNotFound" | "snippetNotFound",
+            //     commentContent: string,
+            //     snippetContent?: string,
+            // } = startWith(fetchFile(`${url}/${file}`).orElse({
+            //     do: "sampleFileNotFound",
+            //     commentContent: `Failed to retrieve ${url}/${file}`,
+            // })).andWhenThatWorks(findSnippet(name).orElse(
+            //     {
+            //         do: "snippetNotFound",
+            //         commentContent: `Warning: snippet '${name}' not found in ${file}`,
+            //     },
+            // )).andWhenThatWorks(snippet => ({
+            //     do: "replace",
+            //     commentContent: `Snippet ${name} found in ${file}`,
+            //     snippetContent: contentOfSnippet(snippet),
+            // }));
 
-            const currentCommentContent = snippetReference.snippetComment ? snippetReference.snippetComment.snippetCommentContent : "";
+            async function whatToSubstitute(sampleFileUrl: string, snippetName: string): Promise<{
+                do: "replace" | "sampleFileNotFound" | "snippetNotFound",
+                commentContent: string,
+                snippetContent?: string,
+            }> {
+                const sampleResponse = (await httpClient.exchange<string>(
+                    sampleFileUrl,
+                    { method: HttpMethod.Get }));
+                if (!sampleResponse.body) {
+                    logger.error(`Failed to retrieve ${sampleFileUrl}: status ${sampleResponse.status}`);
+                    return {
+                        do: "sampleFileNotFound",
+                        commentContent: `Warning: looking for '${snippetName}' but could not retrieve file ${file}`,
+                    };
+                }
 
-            const needsUpdate = snippetReference.middle.trim() !== replacementMiddle.trim() ||
-                currentCommentContent.trim() !== commentContent.trim();
+                const sampleMatchReports = Array.from(SnippetMicrogrammar(snippetName).matchReportIterator(sampleResponse.body));
+                if (sampleMatchReports.length === 0) {
+                    return {
+                        do: "snippetNotFound",
+                        commentContent: `Warning: snippet '${snippetName}' not found in ${sampleFileUrl}`,
+                    };
+                }
+
+                return {
+                    do: "replace",
+                    commentContent: `Snippet '${snippetName}' found in ${sampleFileUrl}`,
+                    snippetContent: contentOfSnippet(sampleMatchReports[0]),
+                };
+            }
+
+            const whatToDo = await whatToSubstitute(`${url}/${file}`, name);
+
+            const currentCommentContent = snippetReference.snippetComment ? snippetReference.snippetComment.snippetCommentContent.trim() : "";
+            const currentSnippetContent = snippetReference.middle.trim();
+
+            const needsUpdate = (whatToDo.snippetContent && whatToDo.snippetContent !== currentSnippetContent.trim()) ||
+                currentCommentContent !== whatToDo.commentContent;
 
             if (needsUpdate) {
                 const newSnippetReference = `<!-- atomist:code-snippet:start=${file}#${name} -->
-${replacementMiddle.trim()}
-<!-- atomist:docs-sdm:codeSnippetInline: ${commentContent} -->
+${whatToDo.snippetContent || snippetReference.middle.trim()}
+<!-- atomist:docs-sdm:codeSnippetInline: ${whatToDo.commentContent} -->
 <!-- atomist:code-snippet:end -->`;
                 content = content.replace(referenceMatch.matched, newSnippetReference);
             }
 
             outcomes.push({
-                did: found ? "replaced" : "snippetNotFound",
+                did: whatToDo.do,
                 where: {
                     markdownFilepath: f.path,
                     sampleFilepath: file,
@@ -153,9 +213,15 @@ ${replacementMiddle.trim()}
 
 function reportOutcomes(outcomes: CodeSnippetInlineOutcome[], writeToLog: (log: string, ...args: any[]) => void): void {
     const printReplacedSnippets = `Snippets replaced:\n` +
-        outcomes.filter(o => o.did === "replaced")
+        outcomes.filter(o => o.did === "replace")
             .map(o => `name: ${o.where.snippetName} from file: ${o.where.sampleFilepath} in markdown: ${o.where.markdownFilepath}`).join("\n");
     writeToLog(printReplacedSnippets);
+    const unfoundFiles = outcomes.filter(o => o.did === "sampleFileNotFound");
+    if (unfoundFiles.length > 0) {
+        const printUnfoundSnippets = `Files not found:\n` +
+            unfoundFiles.map(o => `name: ${o.where.snippetName} in nonexistent file: ${o.where.sampleFilepath}`).join("\n");
+        writeToLog(printUnfoundSnippets);
+    }
     const unfoundSnippets = outcomes.filter(o => o.did === "snippetNotFound");
     if (unfoundSnippets.length > 0) {
         const printUnfoundSnippets = `Snippets not found:\n` +
@@ -167,7 +233,7 @@ function reportOutcomes(outcomes: CodeSnippetInlineOutcome[], writeToLog: (log: 
 function contentOfSnippet(mr: SuccessfulMatchReport): string {
     const snippetFound = toValueStructure<SnippetFound>(mr);
     return `\`\`\`typescript
-${snippetFound.snippetContent}
+${snippetFound.snippetContent.trim()}
 \`\`\``;
 }
 
