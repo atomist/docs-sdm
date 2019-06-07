@@ -15,7 +15,9 @@
  */
 
 import {
-    DefaultHttpClientFactory,
+    HttpClient,
+    HttpClientFactory,
+    HttpResponse,
     InMemoryProject,
     NoParameters,
     Project,
@@ -50,13 +52,44 @@ class FakeProgressLog implements ProgressLog {
     }
     public log?: string = "";
     public stripAnsi?: boolean;
-
 }
 
-function fakeInvocation(): PushAwareParametersInvocation<NoParameters> {
+type FakeInternet = Array<{ url: string, response: string }>;
+
+function fakeFactory(www: FakeInternet): HttpClientFactory {
+    return {
+        create(): HttpClient {
+            // tslint:disable-next-line:no-object-literal-type-assertion
+            return {
+                www,
+                async exchange(url: string): Promise<HttpResponse<any>> {
+                    const whatIsOutThere = www.find(w => w.url === url);
+                    if (!whatIsOutThere) {
+                        return {
+                            status: 404,
+                        };
+                    }
+                    return {
+                        status: 200,
+                        body: whatIsOutThere.response,
+                    };
+                },
+            } as HttpClient;
+        },
+    };
+}
+
+function sampleRepoFileUrl(filepath: string): string {
+    return "https://raw.githubusercontent.com/atomist/samples/master/" + filepath;
+}
+
+function fakeInvocation(www: FakeInternet = [{
+    url: sampleRepoFileUrl("lib/sdm/dotnetCore.ts"),
+    response: realSnippetFile("dotnetGenerator"),
+}]): PushAwareParametersInvocation<NoParameters> {
     return {
         progressLog: new FakeProgressLog(),
-        configuration: { http: { client: { factory: DefaultHttpClientFactory } } },
+        configuration: { http: { client: { factory: fakeFactory(www) } } },
     } as any;
 }
 
@@ -67,7 +100,46 @@ describe("CodeSnippetInlineTransform", () => {
     // of the sample repo... or I could run the transform twice
     it.skip("should not be edited if the snippet was already correct");
 
-    it.skip("Can replace two snippet references");
+    it("Can replace two snippet references in different files", async () => {
+        const sampleFile1 = "lib/whatever/hi.ts";
+        const mdFile1 = "docs/aboutHi.md";
+        const snippet1 = "barney";
+        const sampleFile2 = "lib/moreStuff/yes.ts";
+        const mdFile2 = "docs/aboutYes.md";
+        const snippet2 = "scarlet";
+        const fakeInv = fakeInvocation([{
+            url: sampleRepoFileUrl(sampleFile1),
+            response: realSnippetFile(snippet1),
+        }, {
+            url: sampleRepoFileUrl(sampleFile2),
+            response: realSnippetFile(snippet2),
+        },
+        ]);
+        const projectWithMarkdownFile = InMemoryProject.of({
+            path: mdFile1,
+            content: generatorMarkdown(snippet1, sampleFile1),
+        },
+            {
+                path: mdFile2,
+                content: generatorMarkdown(snippet2, sampleFile2),
+            });
+        const result = (await CodeSnippetInlineTransform(
+            projectWithMarkdownFile, fakeInv,
+        )) as TransformResult;
+        assert(result.success);
+
+        const snippet1AfterEdit = parseSnippetReferences(projectWithMarkdownFile, mdFile1)[0];
+        assert(snippet1AfterEdit.middle.includes("DotnetCoreGenerator"), fakeInv.progressLog.log);
+        assert.strictEqual(snippet1AfterEdit.snippetComment.snippetCommentContent.trim(),
+            `Snippet '${snippet1}' found in ${sampleRepoFileUrl(sampleFile1)}`);
+
+        const snippet2AfterEdit = parseSnippetReferences(projectWithMarkdownFile, mdFile2)[0];
+        assert(snippet2AfterEdit.middle.includes("DotnetCoreGenerator"), snippet1AfterEdit.middle);
+        assert.strictEqual(snippet2AfterEdit.snippetComment.snippetCommentContent.trim(),
+            `Snippet '${snippet2}' found in ${sampleRepoFileUrl(sampleFile2)}`);
+
+        assert(result.edited, "should be edited");
+    });
 
     it.skip("Inserts a warning when a sample file was not found");
 
@@ -83,7 +155,7 @@ describe("CodeSnippetInlineTransform", () => {
         assert(result.edited, "should be edited");
         const mdFile = await projectWithMarkdownFile.getFile("docs/Generator.md");
         const mdContent = await mdFile.getContent();
-        assert(mdContent.includes("DotnetCoreGenerator"));
+        assert(mdContent.includes(correctSnippetContent), mdContent);
         assert(fakeInv.progressLog.log.includes("Snippets replaced:\nname: dotnetGenerator"), fakeInv.progressLog.log);
     });
 
@@ -99,12 +171,12 @@ describe("CodeSnippetInlineTransform", () => {
         ) as TransformResult;
         assert(result.success, "should be successful");
         assert(result.edited, "should be edited");
-        assert(fakeInv.progressLog.log.includes("Snippets not found:\nname: poo in file: lib/sdm/dotnetCore.ts"));
+        assert(fakeInv.progressLog.log.includes("Snippets not found:\nname: poo in file: "), fakeInv.progressLog.log);
 
         const snippetAfterEdit = parseSnippetReferences(projectWithMarkdownFile, "docs/Generator.md")[0];
         assert.strictEqual(snippetAfterEdit.middle.trim(), snippetBeforeEdit.middle.trim());
         assert.strictEqual(snippetAfterEdit.snippetComment.snippetCommentContent.trim(),
-            "Warning: snippet 'poo' not found in lib/sdm/dotnetCore.ts");
+            `Warning: snippet 'poo' not found in ${sampleRepoFileUrl("lib/sdm/dotnetCore.ts")}`);
 
         // run again on same project. Should not change it
         const secondResult = await CodeSnippetInlineTransform(
@@ -128,14 +200,14 @@ function parseSnippetReferences(p: Project, filename: string): SnippetReference[
     return results.map(match => toValueStructure<SnippetReference>(match));
 }
 
-function generatorMarkdown(snippetName: string = "dotnetGenerator"): string {
+function generatorMarkdown(snippetName: string = "dotnetGenerator", sampleFilepath: string = "lib/sdm/dotnetCore.ts"): string {
     return `
 
 # This is a sample docs page referencing a code snippet
 
 Some more text to make it more interesting
 
-<!-- atomist:code-snippet:start=lib/sdm/dotnetCore.ts#${snippetName} -->
+<!-- atomist:code-snippet:start=${sampleFilepath}#${snippetName} -->
 \`\`\`typescript
 Just some other text
 \`\`\`
@@ -166,15 +238,7 @@ Just some other text
     });
 });
 
-function realSnippetFile(snippetName: string) {
-    return `
-/* Let's just pull out this little chunk
- *               docker daemon. Please make sure to configure your terminal for
- *               docker access.</p>
- */
-
-// atomist:code-snippet:start=${snippetName}
-/**
+const correctSnippetContent = `/**
  * .NET Core generator registration
  */
 const DotnetCoreGenerator: GeneratorRegistration = {
@@ -189,7 +253,17 @@ const DotnetCoreGenerator: GeneratorRegistration = {
         replaceSeedSlug("atomist-seeds", "dotnet-core-service"),
         DotnetCoreProjectFileCodeTransform,
     ],
-};
+};`;
+
+function realSnippetFile(snippetName: string): string {
+    return `
+/* Let's just pull out this little chunk
+ *               docker daemon. Please make sure to configure your terminal for
+ *               docker access.</p>
+ */
+
+// atomist:code-snippet:start=${snippetName}
+${correctSnippetContent}
 // atomist:code-snippet:end
 
 export const configuration = configure(async sdm => {
