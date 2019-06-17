@@ -143,7 +143,22 @@ describe("CodeSnippetInlineTransform", () => {
 
     it.skip("Inserts a warning when a sample file was not found");
 
-    it.skip("Inserts a link to the code sample in the file");
+    it("Inserts a link to the code sample in the file", async () => {
+        const fakeInv = fakeInvocation();
+        const projectWithMarkdownFile = InMemoryProject.of({
+            path: "docs/Generator.md",
+            content: generatorMarkdown()
+        });
+        const result = (await CodeSnippetInlineTransform(
+            projectWithMarkdownFile, fakeInv,
+        )) as TransformResult;
+        assert(result.success);
+        assert(result.edited, "should be edited");
+        const updatedSnippet = parseSnippetReferences(projectWithMarkdownFile, "docs/Generator.md")[0]
+        assert(!!updatedSnippet.snippetLink, "Oh no, no link");
+        const expectedLink = "https://github.com/atomist/samples/tree/master/lib/sdm/dotnetCore.ts#L8-L23";
+        assert.strictEqual(updatedSnippet.snippetLink.href, expectedLink);
+    });
 
     it("should inline all referenced code snippets", async () => {
         const fakeInv = fakeInvocation();
@@ -234,7 +249,24 @@ Just some other text
 \`\`\`
 `,
             snippetComment: undefined,
+            snippetLink: undefined,
         });
+    });
+
+    it("can parse one that has been successfully replaced", async () => {
+        const fakeInv = fakeInvocation();
+        const projectWithMarkdownFile = InMemoryProject.of({
+            path: "docs/Generator.md",
+            content: generatorMarkdown()
+        });
+        await CodeSnippetInlineTransform(
+            projectWithMarkdownFile, fakeInv,
+        ) as TransformResult;
+
+        const postTransformMarkdown = projectWithMarkdownFile.findFileSync("docs/Generator.md").getContentSync();
+        const results = Array.from(RefMicrogrammar.matchReportIterator(postTransformMarkdown));
+
+        assert.strictEqual(results.length, 1, postTransformMarkdown);
     });
 });
 

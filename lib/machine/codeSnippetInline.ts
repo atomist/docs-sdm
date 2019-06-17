@@ -28,12 +28,15 @@ import {
 import {
     SuccessfulMatchReport,
     toValueStructure,
+    toMatchPrefixResult,
+    toParseTree,
 } from "@atomist/microgrammar/lib/MatchReport";
 import {
     AutofixRegistration,
     CodeTransform,
     hasFileWithExtension,
 } from "@atomist/sdm";
+import { PatternMatch } from "@atomist/microgrammar/lib/PatternMatch";
 
 export interface SnippetReference {
     href: {
@@ -44,12 +47,14 @@ export interface SnippetReference {
     snippetComment: {
         snippetCommentContent: string,
     };
+    snippetLink: { href: string };
 }
 export const RefMicrogrammar: Microgrammar<SnippetReference> = microgrammar({
     // tslint:disable-next-line:no-invalid-template-strings
     phrase: `<!-- atomist:code-snippet:start=\${href} -->
     \${middle}
     \${snippetComment}
+    \${snippetLink}
     <!-- atomist:code-snippet:end -->`
     , terms: {
         href: {
@@ -62,6 +67,7 @@ export const RefMicrogrammar: Microgrammar<SnippetReference> = microgrammar({
             // tslint:disable-next-line:no-invalid-template-strings
             phrase: "<!-- atomist:docs-sdm:codeSnippetInline:${snippetCommentContent} -->",
         })),
+        snippetLink: optional(microgrammar({ phrase: `<a href="\${href}" target="_blank" class="sample-code">Source</a>` })),
     },
 }) as Microgrammar<SnippetReference>;
 
@@ -95,8 +101,9 @@ interface CodeSnippetInlineOutcome {
  * CodeTransform to inline referenced code snippets
  */
 export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
-    const url = "https://raw.githubusercontent.com/atomist/samples/master";
-    const httpClient = papi.configuration.http.client.factory.create(url);
+    const rawUrl = "https://raw.githubusercontent.com/atomist/samples/master";
+    const httpUrl = "https://github.com/atomist/samples/tree/master";
+    const httpClient = papi.configuration.http.client.factory.create(rawUrl);
     const writeToLog = papi.progressLog ? papi.progressLog.write : logger.info;
     const outcomes: CodeSnippetInlineOutcome[] = [];
 
@@ -108,23 +115,31 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
             const file = snippetReference.href.filepath;
             const name = snippetReference.href.snippetName;
 
-            async function whatToSubstitute(sampleFileUrl: string, snippetName: string): Promise<{
-                do: "replace" | "sampleFileNotFound" | "snippetNotFound",
-                commentContent: string,
-                snippetContent?: string,
-            }> {
+            async function whatToSubstitute(sampleFileUrl: string,
+                snippetName: string,
+                sampleFileHttpUrl: string): Promise<{
+                    do: "replace" | "sampleFileNotFound" | "snippetNotFound",
+                    commentContent: string,
+                    snippetContent?: string,
+                    link?: string, // html to link to source
+                }> {
                 const sampleResponse = (await httpClient.exchange<string>(
                     sampleFileUrl,
-                    { method: HttpMethod.Get }));
+                    { method: HttpMethod.Get }).catch(err =>
+                        // I don't know what is really returned here
+                        ({ body: undefined, status: err.message })));
                 if (!sampleResponse.body) {
-                    logger.error(`Failed to retrieve ${sampleFileUrl}: status ${sampleResponse.status}`);
+                    logger.error(
+                        `Failed to retrieve ${sampleFileUrl}: status ${sampleResponse.status}`);
                     return {
                         do: "sampleFileNotFound",
                         commentContent: `Warning: looking for '${snippetName}' but could not retrieve file ${file}`,
                     };
                 }
 
-                const sampleMatchReports = Array.from(SnippetMicrogrammar(snippetName).matchReportIterator(sampleResponse.body));
+                const sampleMatchReports = Array.from(
+                    SnippetMicrogrammar(snippetName)
+                        .matchReportIterator(sampleResponse.body));
                 if (sampleMatchReports.length === 0) {
                     return {
                         do: "snippetNotFound",
@@ -132,25 +147,30 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
                     };
                 }
 
+                const lineNumbers = lineNumbersOfSnippet(sampleResponse.body, sampleMatchReports[0]);
                 return {
                     do: "replace",
                     commentContent: `Snippet '${snippetName}' found in ${sampleFileUrl}`,
                     snippetContent: contentOfSnippet(sampleMatchReports[0]),
+                    link: `${sampleFileHttpUrl}#L${lineNumbers.start}-L${lineNumbers.end}`,
                 };
             }
 
-            const whatToDo = await whatToSubstitute(`${url}/${file}`, name);
+            const whatToDo = await whatToSubstitute(`${rawUrl}/${file}`, name, `${httpUrl}/${file}`);
 
             const currentCommentContent = snippetReference.snippetComment ? snippetReference.snippetComment.snippetCommentContent.trim() : "";
             const currentSnippetContent = snippetReference.middle.trim();
+            const currentLink = snippetReference.snippetLink ? snippetReference.snippetLink.href : undefined;
 
             const needsUpdate = (whatToDo.snippetContent && whatToDo.snippetContent !== currentSnippetContent.trim()) ||
-                currentCommentContent !== whatToDo.commentContent;
+                currentCommentContent !== whatToDo.commentContent ||
+                currentLink !== whatToDo.link;
 
             if (needsUpdate) {
+                const link = whatToDo.link ? `\n<a href="${whatToDo.link}" target="_blank" class="sample-code">Source</a>` : "";
                 const newSnippetReference = `<!-- atomist:code-snippet:start=${file}#${name} -->
 ${whatToDo.snippetContent || snippetReference.middle.trim()}
-<!-- atomist:docs-sdm:codeSnippetInline: ${whatToDo.commentContent} -->
+<!-- atomist:docs-sdm:codeSnippetInline: ${whatToDo.commentContent} -->${link}
 <!-- atomist:code-snippet:end -->`;
                 content = content.replace(referenceMatch.matched, newSnippetReference);
             }
@@ -199,6 +219,25 @@ function contentOfSnippet(mr: SuccessfulMatchReport): string {
     return `\`\`\`typescript
 ${snippetFound.snippetContent.trim()}
 \`\`\``;
+}
+
+function lineNumbersOfSnippet(fileContent: string, mr: SuccessfulMatchReport): { start: number, end: number } {
+    // aaaaa I know too much about this library and am cheating with deep coupling
+    const pm = toParseTree(mr);
+    const snippetContentNode = pm.$children.find(c => c.$name === "snippetContent");
+
+    const beginOffset = snippetContentNode.$offset;
+    const endOffset = snippetContentNode.$offset + snippetContentNode.$value.length;
+
+    return {
+        start: lineNumberOfOffset(fileContent, beginOffset),
+        end: lineNumberOfOffset(fileContent, endOffset),
+    };
+
+}
+
+function lineNumberOfOffset(content: string, offset: number): number {
+    return content.slice(0, offset).split("\n").length
 }
 
 export const CodeSnippetInlineAutofix: AutofixRegistration = {
