@@ -35,6 +35,7 @@ import { PatternMatch } from "@atomist/microgrammar/lib/PatternMatch";
 import {
     AutofixRegistration,
     CodeTransform,
+    CodeTransformRegistration,
     hasFileWithExtension,
 } from "@atomist/sdm";
 
@@ -241,6 +242,13 @@ function lineNumbersOfSnippet(fileContent: string, mr: SuccessfulMatchReport): {
 function lineNumberOfOffset(content: string, offset: number): number {
     return content.slice(0, offset).split("\n").length;
 }
+
+export const CodeSnippetInlineCommand: CodeTransformRegistration = {
+    name: "CodeSnippetInlineCommand",
+    intent: "update code snippets",
+    transform: CodeSnippetInlineTransform,
+
+};
 
 export const CodeSnippetInlineAutofix: AutofixRegistration = {
     name: "code inline",

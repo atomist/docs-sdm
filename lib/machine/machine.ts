@@ -48,7 +48,7 @@ import {
     AlphabetizeGlossaryAutofix,
     AlphabetizeGlossaryCommand,
 } from "./alphabetizeGlossary";
-import { CodeSnippetInlineAutofix } from "./codeSnippetInline";
+import { CodeSnippetInlineAutofix, CodeSnippetInlineCommand } from "./codeSnippetInline";
 import {
     PutTbdInEmptySectionsAutofix,
     PutTbdInEmptySectionsCommand,
@@ -80,6 +80,7 @@ export function machine(
     });
 
     sdm.addCodeTransformCommand(PutTbdInEmptySectionsCommand);
+    sdm.addCodeTransformCommand(CodeSnippetInlineCommand);
     sdm.addCodeTransformCommand(AlphabetizeGlossaryCommand);
 
     sdm.addCodeInspectionCommand(listTodoCodeInspectionRegistration());
