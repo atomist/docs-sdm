@@ -67,7 +67,9 @@ export const RefMicrogrammar: Microgrammar<SnippetReference> = microgrammar({
             // tslint:disable-next-line:no-invalid-template-strings
             phrase: "<!-- atomist:docs-sdm:codeSnippetInline:${snippetCommentContent} -->",
         })),
-        snippetLink: optional(microgrammar({ phrase: `<a href="\${href}" target="_blank" class="sample-code">Source</a>` })),
+        snippetLink: optional(microgrammar({
+            phrase: `<div class="sample-code"><a href="\${href}" target="_blank">Source</a></div>`
+        })),
     },
 }) as Microgrammar<SnippetReference>;
 
@@ -167,7 +169,7 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
                 currentLink !== whatToDo.link;
 
             if (needsUpdate) {
-                const link = whatToDo.link ? `\n<a href="${whatToDo.link}" target="_blank" class="sample-code">Source</a>` : "";
+                const link = whatToDo.link ? `\n<div class="sample-code"><a href="${whatToDo.link}" target="_blank">Source</a></div>` : "";
                 const newSnippetReference = `<!-- atomist:code-snippet:start=${file}#${name} -->
 ${whatToDo.snippetContent || snippetReference.middle.trim()}
 <!-- atomist:docs-sdm:codeSnippetInline: ${whatToDo.commentContent} -->${link}
