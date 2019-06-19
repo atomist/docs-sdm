@@ -48,7 +48,10 @@ import {
     AlphabetizeGlossaryAutofix,
     AlphabetizeGlossaryCommand,
 } from "./alphabetizeGlossary";
-import { CodeSnippetInlineAutofix, CodeSnippetInlineCommand } from "./codeSnippetInline";
+import {
+    CodeSnippetInlineAutofix,
+    CodeSnippetInlineCommand,
+} from "./codeSnippetInline";
 import {
     PutTbdInEmptySectionsAutofix,
     PutTbdInEmptySectionsCommand,
