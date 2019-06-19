@@ -147,14 +147,14 @@ describe("CodeSnippetInlineTransform", () => {
         const fakeInv = fakeInvocation();
         const projectWithMarkdownFile = InMemoryProject.of({
             path: "docs/Generator.md",
-            content: generatorMarkdown()
+            content: generatorMarkdown(),
         });
         const result = (await CodeSnippetInlineTransform(
             projectWithMarkdownFile, fakeInv,
         )) as TransformResult;
         assert(result.success);
         assert(result.edited, "should be edited");
-        const updatedSnippet = parseSnippetReferences(projectWithMarkdownFile, "docs/Generator.md")[0]
+        const updatedSnippet = parseSnippetReferences(projectWithMarkdownFile, "docs/Generator.md")[0];
         assert(!!updatedSnippet.snippetLink, "Oh no, no link");
         const expectedLink = "https://github.com/atomist/samples/tree/master/lib/sdm/dotnetCore.ts#L8-L23";
         assert.strictEqual(updatedSnippet.snippetLink.href, expectedLink);
@@ -257,8 +257,9 @@ Just some other text
         const fakeInv = fakeInvocation();
         const projectWithMarkdownFile = InMemoryProject.of({
             path: "docs/Generator.md",
-            content: generatorMarkdown()
+            content: generatorMarkdown(),
         });
+        // tslint:disable-next-line:no-unused-expression
         await CodeSnippetInlineTransform(
             projectWithMarkdownFile, fakeInv,
         ) as TransformResult;

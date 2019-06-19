@@ -27,16 +27,16 @@ import {
 } from "@atomist/microgrammar";
 import {
     SuccessfulMatchReport,
-    toValueStructure,
     toMatchPrefixResult,
     toParseTree,
+    toValueStructure,
 } from "@atomist/microgrammar/lib/MatchReport";
+import { PatternMatch } from "@atomist/microgrammar/lib/PatternMatch";
 import {
     AutofixRegistration,
     CodeTransform,
     hasFileWithExtension,
 } from "@atomist/sdm";
-import { PatternMatch } from "@atomist/microgrammar/lib/PatternMatch";
 
 export interface SnippetReference {
     href: {
@@ -68,7 +68,7 @@ export const RefMicrogrammar: Microgrammar<SnippetReference> = microgrammar({
             phrase: "<!-- atomist:docs-sdm:codeSnippetInline:${snippetCommentContent} -->",
         })),
         snippetLink: optional(microgrammar({
-            phrase: `<div class="sample-code"><a href="\${href}" target="_blank">Source</a></div>`
+            phrase: `<div class="sample-code"><a href="\${href}" target="_blank">Source</a></div>`,
         })),
     },
 }) as Microgrammar<SnippetReference>;
@@ -112,14 +112,14 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
     await projectUtils.doWithFiles(p, "**/*.md", async f => {
         let content = await f.getContent();
         const referenceMatchReports = RefMicrogrammar.matchReportIterator(content);
-        for await (const referenceMatch of referenceMatchReports) {
+        for (const referenceMatch of referenceMatchReports) {
             const snippetReference = toValueStructure<SnippetReference>(referenceMatch);
             const file = snippetReference.href.filepath;
             const name = snippetReference.href.snippetName;
 
             async function whatToSubstitute(sampleFileUrl: string,
-                snippetName: string,
-                sampleFileHttpUrl: string): Promise<{
+                                            snippetName: string,
+                                            sampleFileHttpUrl: string): Promise<{
                     do: "replace" | "sampleFileNotFound" | "snippetNotFound",
                     commentContent: string,
                     snippetContent?: string,
@@ -239,7 +239,7 @@ function lineNumbersOfSnippet(fileContent: string, mr: SuccessfulMatchReport): {
 }
 
 function lineNumberOfOffset(content: string, offset: number): number {
-    return content.slice(0, offset).split("\n").length
+    return content.slice(0, offset).split("\n").length;
 }
 
 export const CodeSnippetInlineAutofix: AutofixRegistration = {
