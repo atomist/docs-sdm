@@ -32,6 +32,9 @@ const machineOptions: ConfigureOptions = {
 
 // Main configuration entry point for this SDM
 export const configuration: SoftwareDeliveryMachineConfiguration<CacheConfiguration> = {
+    logging: {
+        level: "info",
+    },
     postProcessors: [
         configureLogzio,
         configureSdm(machine, machineOptions),
