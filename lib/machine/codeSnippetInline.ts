@@ -105,7 +105,7 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
     const rawUrl = "https://raw.githubusercontent.com/atomist/samples/master";
     const httpUrl = "https://github.com/atomist/samples/tree/master";
     const httpClient = papi.configuration.http.client.factory.create(rawUrl);
-    const writeToLog = papi.progressLog ? papi.progressLog.write : logger.info;
+    const writeToLog = !!papi.progressLog ? (log: string, ...args: any[]) => papi.progressLog.write(log, ...args) : logger.info;
     const outcomes: CodeSnippetInlineOutcome[] = [];
 
     await projectUtils.doWithFiles(p, "**/*.md", async f => {

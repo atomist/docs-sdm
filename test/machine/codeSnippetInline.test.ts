@@ -27,6 +27,7 @@ import {
     ProgressLog,
     PushAwareParametersInvocation,
     TransformResult,
+    WriteToAllProgressLog,
 } from "@atomist/sdm";
 import * as assert from "assert";
 import {
@@ -88,7 +89,7 @@ function fakeInvocation(www: FakeInternet = [{
     response: realSnippetFile("dotnetGenerator"),
 }]): PushAwareParametersInvocation<NoParameters> {
     return {
-        progressLog: new FakeProgressLog(),
+        progressLog: new WriteToAllProgressLog("test", new FakeProgressLog(), new FakeProgressLog()),
         configuration: { http: { client: { factory: fakeFactory(www) } } },
     } as any;
 }
