@@ -256,9 +256,9 @@ export const CodeSnippetInlineCommand: CodeTransformRegistration = {
     transformPresentation: (papi, p) => {
         return new PullRequest(
             `code-snippet-inline-${formatDate()}`,
-            "Updated code snippets",
-            "Updated code snippets to latest versions in atomist/sample",
-            "Updated code snippets",
+            "Update code snippets",
+            "Update code snippets to latest versions in atomist/sample",
+            "Update code snippets",
             p.id.branch,
             {
                 mode: AutoMergeMode.SuccessfulCheck,
