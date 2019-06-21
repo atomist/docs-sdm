@@ -1,0 +1,8 @@
+subscription OnPushToSamples {
+    Push {
+        repo(owner: "atomist", name: "samples") {
+            owner
+            name
+        }
+    }
+}

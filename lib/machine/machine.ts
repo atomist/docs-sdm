@@ -52,6 +52,7 @@ import {
     CodeSnippetInlineAutofix,
     CodeSnippetInlineCommand,
 } from "./codeSnippetInline";
+import { CreateCodeSnippetInlineJobOnPushToSamples } from "./createCodeSnippetInlineJob";
 import {
     PutTbdInEmptySectionsAutofix,
     PutTbdInEmptySectionsCommand,
@@ -166,6 +167,8 @@ export function machine(
         goalStateSupport(),
         githubGoalStatusSupport(),
     );
+
+    sdm.addEvent(CreateCodeSnippetInlineJobOnPushToSamples);
 
     return sdm;
 }

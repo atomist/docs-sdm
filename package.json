@@ -29,7 +29,7 @@
     "@atomist/automation-client-ext-logzio": "^1.0.1",
     "@atomist/microgrammar": "^1.2.1-master.20190320034523",
     "@atomist/sdm": "1.5.2-master.20190616203852",
-    "@atomist/sdm-core": "1.5.3-master.20190621054435",
+    "@atomist/sdm-core": "1.5.3-master.20190621124819",
     "@atomist/sdm-pack-build": "^1.0.3",
     "@atomist/sdm-pack-markdown": "^0.1.2",
     "@atomist/sdm-pack-s3": "^0.5.0",
