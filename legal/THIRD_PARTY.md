@@ -38,7 +38,7 @@ Apache License 2.0 - [http://www.apache.org/licenses/LICENSE-2.0](http://www.apa
 | Name | Version | Publisher | Repository |
 |------|---------|-----------|------------|
 |`@atomist/automation-client-ext-logzio`|`1.0.2`|Atomist|[https://github.com/atomist/automation-client-ext-logzio](https://github.com/atomist/automation-client-ext-logzio)|
-|`@atomist/sdm-core`|`1.5.3-master.20190621054435`|Atomist|[https://github.com/atomist/sdm-core](https://github.com/atomist/sdm-core)|
+|`@atomist/sdm-core`|`1.5.3-master.20190621124819`|Atomist|[https://github.com/atomist/sdm-core](https://github.com/atomist/sdm-core)|
 |`@atomist/sdm-pack-build`|`1.0.4`|Atomist|[https://github.com/atomist/sdm-pack-build](https://github.com/atomist/sdm-pack-build)|
 |`@atomist/sdm-pack-markdown`|`0.1.3`|rodjohnson|[https://github.com/atomist/sdm-pack-markdown](https://github.com/atomist/sdm-pack-markdown)|
 |`@atomist/sdm-pack-s3`|`0.5.0`|Atomist|[https://github.com/atomist/sdm-pack-s3](https://github.com/atomist/sdm-pack-s3)|
