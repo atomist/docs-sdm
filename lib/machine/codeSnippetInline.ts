@@ -20,6 +20,11 @@ import {
     projectUtils,
 } from "@atomist/automation-client";
 import {
+    AutoMergeMethod,
+    AutoMergeMode,
+    PullRequest,
+} from "@atomist/automation-client/lib/operations/edit/editModes";
+import {
     microgrammar,
     Microgrammar,
     optional,
@@ -34,6 +39,7 @@ import {
     AutofixRegistration,
     CodeTransform,
     CodeTransformRegistration,
+    formatDate,
     hasFileWithExtension,
 } from "@atomist/sdm";
 
@@ -48,6 +54,7 @@ export interface SnippetReference {
     };
     snippetLink: { href: string };
 }
+
 export const RefMicrogrammar: Microgrammar<SnippetReference> = microgrammar({
     // tslint:disable-next-line:no-invalid-template-strings
     phrase: `<!-- atomist:code-snippet:start=\${href} -->
@@ -76,6 +83,7 @@ export interface SnippetFound {
     snippetName: string;
     snippetContent: string;
 }
+
 export function SnippetMicrogrammar(snippetName: string): Microgrammar<SnippetFound> {
     return microgrammar({
         // tslint:disable-next-line:no-invalid-template-strings
@@ -119,16 +127,16 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
             async function whatToSubstitute(sampleFileUrl: string,
                                             snippetName: string,
                                             sampleFileHttpUrl: string): Promise<{
-                    do: "replace" | "sampleFileNotFound" | "snippetNotFound",
-                    commentContent: string,
-                    snippetContent?: string,
-                    link?: string, // html to link to source
-                }> {
+                do: "replace" | "sampleFileNotFound" | "snippetNotFound",
+                commentContent: string,
+                snippetContent?: string,
+                link?: string, // html to link to source
+            }> {
                 const sampleResponse = (await httpClient.exchange<string>(
                     sampleFileUrl,
                     { method: HttpMethod.Get }).catch(err =>
-                        // I don't know what is really returned here
-                        ({ body: undefined, status: err.message })));
+                    // I don't know what is really returned here
+                    ({ body: undefined, status: err.message })));
                 if (!sampleResponse.body) {
                     logger.error(
                         `Failed to retrieve ${sampleFileUrl}: status ${sampleResponse.status}`);
@@ -245,7 +253,19 @@ export const CodeSnippetInlineCommand: CodeTransformRegistration = {
     name: "CodeSnippetInlineCommand",
     intent: "update code snippets",
     transform: CodeSnippetInlineTransform,
-
+    transformPresentation: (papi, p) => {
+        return new PullRequest(
+            `code-snippet-inline-${formatDate()}`,
+            "Updated code snippets",
+            "Updated code snippets to latest versions in atomist/sample",
+            "Updated code snippets",
+            p.id.branch,
+            {
+                mode: AutoMergeMode.SuccessfulCheck,
+                method: AutoMergeMethod.Merge,
+            },
+        );
+    },
 };
 
 export const CodeSnippetInlineAutofix: AutofixRegistration = {
