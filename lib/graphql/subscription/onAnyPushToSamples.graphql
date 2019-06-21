@@ -1,6 +1,6 @@
 subscription OnPushToSamples {
     Push {
-        repo(owner: "atomist", name: "samples") {
+        repo(owner: "atomist", name: "samples") @required {
             owner
             name
         }

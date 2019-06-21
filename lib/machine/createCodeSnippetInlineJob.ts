@@ -28,15 +28,18 @@ export const CreateCodeSnippetInlineJobOnPushToSamples: EventHandlerRegistration
     description: "Create a job to run the CodeSnippetInlineCommand",
     subscription: GraphQL.subscription("OnPushToSamples"),
     listener: async (e, ctx) => {
-        await createJob({
-                command: CodeSnippetInlineCommand,
-                description: "Run 'CodeSnippetInlineCommand' on push to samples repository",
-                parameters: {
-                    "targets.repo": "docs",
-                    "targets.owner": "atomist",
+        const push = e.data.Push[0];
+        if (!!push.repo && push.repo.name === "samples") {
+            await createJob({
+                    command: CodeSnippetInlineCommand,
+                    description: "Run 'CodeSnippetInlineCommand' on push to samples repository",
+                    parameters: {
+                        "targets.repo": "docs",
+                        "targets.owner": "atomist",
+                    },
                 },
-            },
-            ctx);
+                ctx);
+        }
         return Success;
     },
 };
