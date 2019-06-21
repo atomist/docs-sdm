@@ -27,11 +27,9 @@ import {
 } from "@atomist/microgrammar";
 import {
     SuccessfulMatchReport,
-    toMatchPrefixResult,
     toParseTree,
     toValueStructure,
 } from "@atomist/microgrammar/lib/MatchReport";
-import { PatternMatch } from "@atomist/microgrammar/lib/PatternMatch";
 import {
     AutofixRegistration,
     CodeTransform,
