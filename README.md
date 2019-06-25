@@ -12,13 +12,44 @@ software.
 
 ## Features
 
+### Update code snippets
+
+To reference code from the [Atomist samples repository](https://github.com/atomist/samples), 
+reference it like this, with the file path (lib/command/helloWorld.ts) and a snippet name (helloWorldCommandAdd): 
+
+```
+<!-- atomist:code-snippet:start=lib/command/helloWorld.ts#helloWorldCommandAdd -->
+
+It doesn't matter what you put in here. It will be replaced (if the snippet reference resolves)
+
+<!-- atomist:code-snippet:end -->
+```
+[(See this in commands.md)](https://github.com/atomist/docs/docs/developer/commands.md)
+
+Meanwhile, get your code snippet into the master branch in [the referenced file in samples](https://github.com/atomist/samples/tree/master/lib/command/helloWorld.ts#L27-L34), like this, with a snippet name.
+
+```typescript
+// atomist:code-snippet:start=helloWorldCommandAdd
+import { WeLoveToIncludeImportsInDocs } from "@atomist/sdm";
+
+export function actualCodeGoesHere() {
+    return "Hello, world!";
+}
+// atomist:code-snippet:end
+```
+
+The autofix will find the code in the samples repo and stick it between your delineating comments, along with a link to the source.
+See the results in [the commands docs page](https://docs.atomist.com/developer/commands/index.html#register-your-command).
+
+[include]: https://github.com/cmacmackin/markdown-include (GitHub repo for Markdown Include Extension)
+
 ### Put TBD in Empty Sections
 
 The `putTbdInEmptySections` autofix runs after every push, 
 and replaces empty Markdown sections
 with a "To be disclosed" include. If you use this, be sure you use the 
 [include][] markdown extension and define a piece named `tbd.md`.
-You might prefer to copy the code and make a similar autofix of your own.
+You might prefer to copy [the code](lib/machine/emptySectionsContainTbd.md) and make a similar autofix of your own.
 
 [include]: https://github.com/cmacmackin/markdown-include (GitHub repo for Markdown Include Extension)
 
