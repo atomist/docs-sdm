@@ -72,7 +72,12 @@ export function machine(
         configuration,
     });
 
-    /* deliver the documentation to S3 */
+    /* A starting point for new repositories that can be delivered by this machine */
+    sdm.addGeneratorCommand(MkdocsSiteGenerator);
+
+    /* deliver the documentation to S3.
+     * Establish all the goals that we need to complete
+     */
 
     /* step 1: fix stuff in the code */
     const autofix = new Autofix()
@@ -80,15 +85,15 @@ export function machine(
         .with(CodeSnippetInlineAutofix)
         .with(lintAutofix);
 
-    /* step 2: generate the site */
-    const build = new Build("mkdocs build")
-        .with(mkdocsBuilderRegistration());
-
     /* another step: look for problems like undefined references,
      * and send messages to Slack about them. */
     const codeInspection = new AutoCodeInspection()
         .with(inspectReferences)
         .withListener(slackReviewListenerRegistration());
+
+    /* another step: generate the site */
+    const build = new Build("mkdocs build")
+        .with(mkdocsBuilderRegistration());
 
     /* another step: run a build in strict mode to look for problems */
     const strictMkdocsBuild = goal(
@@ -97,14 +102,12 @@ export function machine(
 
     /* another step: run htmltest in order to look for bad links */
     const htmltest = goal(
-        {
-            displayName: "htmltest",
-            uniqueName: "customHtmltestGoal",
-        },
+        { displayName: "htmltest", uniqueName: "customHtmltestGoal" },
         executeHtmltest,
         { logInterpreter: htmltestLogInterpreter })
         .withProjectListener(MkdocsBuildAfterCheckout);
 
+    /* another step: publish draft of documents to S3 */
     const publish = new PublishToS3({
         uniqueName: "publish draft to s3",
         bucketName: "docs-sdm.atomist.com",
@@ -115,13 +118,7 @@ export function machine(
         linkLabel: "Check it out!",
     }).withProjectListener(MkdocsBuildAfterCheckout);
 
-    const mkDocsGoals = goals("mkdocs")
-        .plan(autofix, codeInspection)
-        .plan(build).after(autofix)
-        .plan(strictMkdocsBuild).after(build)
-        .plan(publish).after(build)
-        .plan(htmltest).after(publish);
-
+    /* a final step: publish to the real live S3 bucket */
     const reallyPublishGoal = new PublishToS3({
         uniqueName: "publish site to s3",
         preApprovalRequired: true,
@@ -133,34 +130,50 @@ export function machine(
         linkLabel: "Live on docs.atomist.com",
     }).withProjectListener(MkdocsBuildAfterCheckout);
 
+    /*
+     * Create goal sets that group all these goals
+     * and establishing ordering between them.
+     */
+    const mkDocsGoals = goals("mkdocs")
+        .plan(autofix, codeInspection)
+        .plan(build).after(autofix)
+        .plan(strictMkdocsBuild, publish).after(build)
+        .plan(htmltest).after(publish);
+
     const officialPublish = goals("Release site")
         .plan(reallyPublishGoal).after(strictMkdocsBuild, publish, htmltest);
 
+    /*
+     * Define the conditions for setting the goals on each push
+     */
     sdm.withPushRules(
+        /* If nothing interesting changed, do nothing */
         whenPushSatisfies(allOf(IsMkdocsProject, not(isMaterialChange({
             extensions: ["html", "js"],
             files: ["mkdocs.yml", ".markdownlint.json"],
             globs: ["docs/**/*"],
         })))).itMeans("Nothing about the markdown changed")
             .setGoals(ImmaterialGoals.andLock()),
+        /* otherwise, do all the mkdocs goals on a mkdocs project */
         whenPushSatisfies(IsMkdocsProject)
             .setGoals(mkDocsGoals),
+        /* additionally, if it's on the default branch, publish to the real site. */
         whenPushSatisfies(IsMkdocsProject, ToDefaultBranch)
             .setGoals(officialPublish),
     );
 
-    sdm.addGeneratorCommand(MkdocsSiteGenerator);
-
+    /* these are just useful */
     sdm.addExtensionPacks(
         goalStateSupport(),
         githubGoalStatusSupport(),
     );
 
-    sdm.addEvent(CreateCodeSnippetInlineJobOnPushToSamples);
-
     /* Also run these autofixes as a command, on demand. */
     sdm.addCodeTransformCommand(CodeSnippetInlineCommand);
     sdm.addCodeTransformCommand(AlphabetizeGlossaryCommand);
+
+    /* Extra: when the code samples are updated, run the code snippet update command */
+    sdm.addEvent(CreateCodeSnippetInlineJobOnPushToSamples);
 
     return sdm;
 }
