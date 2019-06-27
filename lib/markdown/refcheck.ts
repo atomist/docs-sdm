@@ -15,6 +15,7 @@
  */
 
 import {
+    Project,
     ProjectReview,
     projectUtils,
     ReviewComment,
@@ -37,37 +38,45 @@ export const linkDefinitionMg = microgrammar({
     },
 });
 
+/**
+ * a Code Inspection for Markdown files.
+ * It looks for links that are [referenced][like-this]
+ * but not defined which would look
+ * [like-this]: http://linky.doober (link name)
+ */
 export const inspectReferences: CodeInspectionRegistration<ProjectReview> = {
     name: "Markdown reference inspection",
-    inspection: async p => {
-        const comments: ReviewComment[] = [];
-        await projectUtils.doWithFiles(p, "**/*.md", async f => {
-            const content = await f.getContent();
-
-            const linkDefinitions = linkDefinitionMg.findMatches(content);
-            const definedNames = linkDefinitions.map(m => m.refname);
-
-            const linkReferences = linkReferenceMg.findMatches(content);
-            linkReferences.forEach(refmatch => {
-                if (definedNames.includes(refmatch.refname)) {
-                    return;
-                }
-                comments.push({
-                    severity: "error",
-                    category: "unresolved-link-reference",
-                    detail: `${f.path} references ${refmatch.refname} which is not defined`,
-                    sourceLocation: {
-                        path: f.path,
-                        offset: refmatch.$offset,
-                        lineFrom1: lineByOffset(content, refmatch.$offset),
-                    },
-                });
-            });
-
-        });
-        return { repoId: p.id, comments };
-    },
+    inspection: findReferencedLinksThatAreNotDefined,
 };
+
+async function findReferencedLinksThatAreNotDefined(p: Project): Promise<ProjectReview> {
+    const comments: ReviewComment[] = [];
+    await projectUtils.doWithFiles(p, "**/*.md", async f => {
+        const content = await f.getContent();
+
+        const linkDefinitions = linkDefinitionMg.findMatches(content);
+        const definedNames = linkDefinitions.map(m => m.refname);
+
+        const linkReferences = linkReferenceMg.findMatches(content);
+        linkReferences.forEach(refmatch => {
+            if (definedNames.includes(refmatch.refname)) {
+                return;
+            }
+            comments.push({
+                severity: "error",
+                category: "unresolved-link-reference",
+                detail: `${f.path} references ${refmatch.refname} which is not defined`,
+                sourceLocation: {
+                    path: f.path,
+                    offset: refmatch.$offset,
+                    lineFrom1: lineByOffset(content, refmatch.$offset),
+                },
+            });
+        });
+
+    });
+    return { repoId: p.id, comments };
+}
 
 function lineByOffset(content: string, offset: number): number {
     let startingOffset = 0;

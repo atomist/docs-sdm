@@ -43,16 +43,6 @@ See the results in [the commands docs page](https://docs.atomist.com/developer/c
 
 [include]: https://github.com/cmacmackin/markdown-include (GitHub repo for Markdown Include Extension)
 
-### Put TBD in Empty Sections
-
-The `putTbdInEmptySections` autofix runs after every push, 
-and replaces empty Markdown sections
-with a "To be disclosed" include. If you use this, be sure you use the 
-[include][] markdown extension and define a piece named `tbd.md`.
-You might prefer to copy [the code](lib/machine/emptySectionsContainTbd.md) and make a similar autofix of your own.
-
-[include]: https://github.com/cmacmackin/markdown-include (GitHub repo for Markdown Include Extension)
-
 ## Prerequisites
 
 See the [Atomist Developer documentation][atomist-dev] for

@@ -22,6 +22,10 @@ import {
     ProjectAwareGoalInvocation,
 } from "@atomist/sdm";
 
+/**
+ * When executed, this goal will run a `mkdocs build --strict`
+ * which will look for problems like links to sibling pages that don't exist.
+ */
 export const executeMkdocsStrict: ExecuteGoal = doWithProject(async (inv: ProjectAwareGoalInvocation) => {
     {
         const pipResult = await inv.spawn("pip", ["install", "-r", "requirements.txt"]);

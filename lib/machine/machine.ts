@@ -54,23 +54,12 @@ import {
 } from "./codeSnippetInline";
 import { CreateCodeSnippetInlineJobOnPushToSamples } from "./createCodeSnippetInlineJob";
 import {
-    PutTbdInEmptySectionsAutofix,
-    PutTbdInEmptySectionsCommand,
-} from "./emptySectionsContainTbd";
-import {
     executeHtmlproof,
     htmltestLogInterpreter,
     MkdocsBuildAfterCheckout,
 } from "./htmltest";
-import {
-    listTodoCodeInspectionRegistration,
-} from "./listTodoCommand";
 import { MkdocsSiteGenerator } from "./mkdocsGenerator";
 import { executeMkdocsStrict } from "./mkdocsStrict";
-import {
-    TbdFingerprinterRegistration,
-    tbdFingerprintListener,
-} from "./tbdFingerprinter";
 
 export function machine(
     configuration: SoftwareDeliveryMachineConfiguration,
@@ -79,35 +68,34 @@ export function machine(
     logger.info("The configured log level is: " + configuration.logging.level);
 
     const sdm = createSoftwareDeliveryMachine({
-        name: "Atomist Documentation Software Delivery Machine",
+        name: "Atomist Documentation Machine",
         configuration,
     });
 
-    sdm.addCodeTransformCommand(PutTbdInEmptySectionsCommand);
-    sdm.addCodeTransformCommand(CodeSnippetInlineCommand);
-    sdm.addCodeTransformCommand(AlphabetizeGlossaryCommand);
+    /* deliver the documentation to S3 */
 
-    sdm.addCodeInspectionCommand(listTodoCodeInspectionRegistration());
-
-    const autofix = new Autofix().with(PutTbdInEmptySectionsAutofix)
+    /* step 1: fix stuff in the code */
+    const autofix = new Autofix()
         .with(AlphabetizeGlossaryAutofix)
         .with(CodeSnippetInlineAutofix)
         .with(lintAutofix);
 
-    const fingerprint = new Fingerprint().with(TbdFingerprinterRegistration)
-        .withListener(tbdFingerprintListener);
-
+    /* step 2: generate the site */
     const build = new Build("mkdocs build")
         .with(mkdocsBuilderRegistration());
 
-    const codeInspection = new AutoCodeInspection();
-    codeInspection.with(inspectReferences)
+    /* another step: look for problems like undefined references,
+     * and send messages to Slack about them. */
+    const codeInspection = new AutoCodeInspection()
+        .with(inspectReferences)
         .withListener(slackReviewListenerRegistration());
 
+    /* another step: run a build in strict mode to look for problems */
     const strictMkdocsBuild = goal(
         { displayName: "mkdocs strict" },
         executeMkdocsStrict);
 
+    /* another step: run htmltest in order to look for bad links */
     const htmltest = goal(
         {
             displayName: "htmltest",
@@ -128,7 +116,7 @@ export function machine(
     }).withProjectListener(MkdocsBuildAfterCheckout);
 
     const mkDocsGoals = goals("mkdocs")
-        .plan(autofix, fingerprint, codeInspection)
+        .plan(autofix, codeInspection)
         .plan(build).after(autofix)
         .plan(strictMkdocsBuild).after(build)
         .plan(publish).after(build)
@@ -169,6 +157,10 @@ export function machine(
     );
 
     sdm.addEvent(CreateCodeSnippetInlineJobOnPushToSamples);
+
+    /* Also run these autofixes as a command, on demand. */
+    sdm.addCodeTransformCommand(CodeSnippetInlineCommand);
+    sdm.addCodeTransformCommand(AlphabetizeGlossaryCommand);
 
     return sdm;
 }
