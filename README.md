@@ -2,15 +2,15 @@
 
 [![npm version](https://img.shields.io/npm/v/@atomist/docs-sdm.svg)](https://www.npmjs.com/package/@atomist/docs-sdm)
 
-[Atomist][atomist] software delivery machine (SDM) for delivering our documentation.
+[Atomist][atomist] software delivery machine ([SDM](https://docs.atomist.com/developer/sdm/)) for delivering our documentation.
 
-See the [Atomist documentation][atomist-doc] for more information on
-what SDMs are and what they can do for you using the Atomist API for
-software.
+This machine runs in our cloud (and [on my laptop](https://docs.atomist.com/developer/local/), when I want it to) and delivers our documentation. It builds the markdown into a site using mkdocs, then ships the output to s3.
+
+See the results in the [Atomist docs][atomist-doc].
 
 [atomist-doc]: https://docs.atomist.com/ (Atomist Documentation)
 
-## Features
+## Autofixes
 
 ### Update code snippets
 
