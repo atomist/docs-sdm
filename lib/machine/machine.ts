@@ -54,7 +54,7 @@ import {
 } from "./codeSnippetInline";
 import { CreateCodeSnippetInlineJobOnPushToSamples } from "./createCodeSnippetInlineJob";
 import {
-    executeHtmlproof,
+    executeHtmltest,
     htmltestLogInterpreter,
     MkdocsBuildAfterCheckout,
 } from "./htmltest";
@@ -101,7 +101,7 @@ export function machine(
             displayName: "htmltest",
             uniqueName: "customHtmltestGoal",
         },
-        executeHtmlproof,
+        executeHtmltest,
         { logInterpreter: htmltestLogInterpreter })
         .withProjectListener(MkdocsBuildAfterCheckout);
 

@@ -154,7 +154,7 @@ export function toProjectAwareGoalInvocation(project: GitProject, gi: GoalInvoca
     return { ...gi, project, spawn, exec };
 }
 
-export const executeHtmlproof: ExecuteGoal = doWithProject(async (inv: ProjectAwareGoalInvocation) => {
+export const executeHtmltest: ExecuteGoal = doWithProject(async (inv: ProjectAwareGoalInvocation) => {
 
     inv.progressLog.write("This goal checks links in the generated HTML." +
         "It uses htmltest: https://github.com/wjdp/htmltest");
