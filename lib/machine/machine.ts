@@ -86,7 +86,7 @@ export function machine(
         .with(lintAutofix);
 
     /* step 1: fix stuff in the code */
-    const onlyCodeSnippetAutofix = new Autofix()
+    const onlyCodeSnippetAutofix = new Autofix({ displayName: "code snippet autofix" })
         .with(CodeSnippetInlineAutofix);
 
     /* another step: look for problems like undefined references,
