@@ -18,7 +18,10 @@ import {
     GraphQL,
     Success,
 } from "@atomist/automation-client";
-import { createJob, EventHandlerRegistration } from "@atomist/sdm";
+import {
+    createJob,
+    EventHandlerRegistration,
+} from "@atomist/sdm";
 import { OnPushToSamples } from "../typings/types";
 import { CodeSnippetInlineCommand } from "./codeSnippetInline";
 
