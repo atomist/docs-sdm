@@ -19,9 +19,11 @@ reference it like this, with the file path (lib/command/helloWorld.ts) and a sni
 
 ```
 <!-- atomist:code-snippet:start=lib/command/helloWorld.ts#helloWorldCommandAdd -->
-
-It doesn't matter what you put in here. It will be replaced (if the snippet reference resolves)
-
+```typescript
+sdm.addCommand(helloWorldCommand);
+```
+<!-- atomist:docs-sdm:codeSnippetInline: Snippet 'helloWorldCommandAdd' found in https://raw.githubusercontent.com/atomist/samples/master/lib/command/helloWorld.ts -->
+<div class="sample-code"><a href="https://github.com/atomist/samples/tree/master/lib/command/helloWorld.ts#L59-L59" target="_blank">Source</a></div>
 <!-- atomist:code-snippet:end -->
 ```
 [(See this in commands.md)](https://github.com/atomist/docs/docs/developer/commands.md)
