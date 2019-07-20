@@ -18,8 +18,7 @@ import {
     GraphQL,
     Success,
 } from "@atomist/automation-client";
-import { EventHandlerRegistration } from "@atomist/sdm";
-import { createJob } from "@atomist/sdm-core";
+import { EventHandlerRegistration, createJob } from "@atomist/sdm";
 import { OnPushToSamples } from "../typings/types";
 import { CodeSnippetInlineCommand } from "./codeSnippetInline";
 
@@ -31,13 +30,13 @@ export const CreateCodeSnippetInlineJobOnPushToSamples: EventHandlerRegistration
         const push = e.data.Push[0];
         if (!!push.repo && push.repo.name === "samples") {
             await createJob({
-                    command: CodeSnippetInlineCommand,
-                    description: "Run 'CodeSnippetInlineCommand' on push to samples repository",
-                    parameters: {
-                        "targets.repo": "docs",
-                        "targets.owner": "atomist",
-                    },
+                command: CodeSnippetInlineCommand,
+                description: "Run 'CodeSnippetInlineCommand' on push to samples repository",
+                parameters: {
+                    "targets.repo": "docs",
+                    "targets.owner": "atomist",
                 },
+            },
                 ctx);
         }
         return Success;
