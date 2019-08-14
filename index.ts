@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { configureHumio } from "@atomist/automation-client-ext-humio";
 import { configureLogzio } from "@atomist/automation-client-ext-logzio";
 import {
     CacheConfiguration,
@@ -36,6 +37,7 @@ export const configuration: SoftwareDeliveryMachineConfiguration<CacheConfigurat
         level: "info",
     },
     postProcessors: [
+        configureHumio,
         configureLogzio,
         configureSdm(machine, machineOptions),
     ],
