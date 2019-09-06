@@ -67,6 +67,10 @@ export const RefMicrogrammar: Microgrammar<SnippetReference> = microgrammar({
             filepath: /[^#]*/,
             _hash: "#",
             snippetName: /\S*/,
+            repoRef: optional(microgrammar({
+                phrase: `@\${repoOwner}/\${repoName}`,
+                terms: { repoOwner: /\S+/, repoName: /\S+/ },
+            })),
         },
         middle: takeUntil("<!-- atomist:"),
         snippetComment: optional(microgrammar({
@@ -127,16 +131,16 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
             async function whatToSubstitute(sampleFileUrl: string,
                                             snippetName: string,
                                             sampleFileHttpUrl: string): Promise<{
-                do: "replace" | "sampleFileNotFound" | "snippetNotFound",
-                commentContent: string,
-                snippetContent?: string,
-                link?: string, // html to link to source
-            }> {
+                    do: "replace" | "sampleFileNotFound" | "snippetNotFound",
+                    commentContent: string,
+                    snippetContent?: string,
+                    link?: string, // html to link to source
+                }> {
                 const sampleResponse = (await httpClient.exchange<string>(
                     sampleFileUrl,
                     { method: HttpMethod.Get }).catch(err =>
-                    // I don't know what is really returned here
-                    ({ body: undefined, status: err.message })));
+                        // I don't know what is really returned here
+                        ({ body: undefined, status: err.message })));
                 if (!sampleResponse.body) {
                     logger.error(
                         `Failed to retrieve ${sampleFileUrl}: status ${sampleResponse.status}`);
