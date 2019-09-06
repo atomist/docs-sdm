@@ -241,8 +241,8 @@ const TestySnippet = "hooray, you found me";
 
 function generatorMarkdown(snippetName: string = "dotnetGenerator",
                            sampleFilepath: string = "lib/sdm/dotnetCore.ts",
-                           sampleRepo: string = "atomist/sample-sdm"): string {
-    const repoSpec = sampleRepo === "atomist/sample-sdm" ? "" : `@${sampleRepo}`;
+                           sampleRepo: string = "atomist/samples"): string {
+    const repoSpec = sampleRepo === "atomist/samples" ? "" : `@${sampleRepo}`;
     return `
 
 # This is a sample docs page referencing a code snippet
