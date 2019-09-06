@@ -175,6 +175,25 @@ describe("CodeSnippetInlineTransform", () => {
         assert(fakeInv.progressLog.log.includes("Snippets replaced:\nname: dotnetGenerator"), fakeInv.progressLog.log);
     });
 
+    it("should inline a referenced code snippets in a repository other than samples", async () => {
+        const fakeInv = fakeInvocation();
+        const projectWithMarkdownFile = InMemoryProject.of({
+            path: "docs/Generator.md",
+            content: generatorMarkdown("testysnippet",
+                "test/machine/codeSnippetInline.test.ts", // this file
+                "atomist/docs-sdm"), // this repo :-)
+        });
+        const result = (await CodeSnippetInlineTransform(
+            projectWithMarkdownFile, fakeInv,
+        )) as TransformResult;
+        assert(result.success);
+        assert(result.edited, "should be edited");
+        const mdFile = await projectWithMarkdownFile.getFile("docs/Generator.md");
+        const mdContent = await mdFile.getContent();
+        assert(mdContent.includes(`const TestySnippet = "hooray, you found me";`), mdContent);
+        assert(fakeInv.progressLog.log.includes("Snippets replaced:\nname: testysnippet"), fakeInv.progressLog.log);
+    });
+
     it("should add a comment about notFound if a snippet is inserted, but only once", async () => {
         const fakeInv = fakeInvocation();
         const projectWithMarkdownFile = InMemoryProject.of({
@@ -216,14 +235,21 @@ function parseSnippetReferences(p: Project, filename: string): SnippetReference[
     return results.map(match => toValueStructure<SnippetReference>(match));
 }
 
-function generatorMarkdown(snippetName: string = "dotnetGenerator", sampleFilepath: string = "lib/sdm/dotnetCore.ts"): string {
+// atomist:code-snippet:start=testysnippet
+const TestySnippet = "hooray, you found me";
+// atomist:code-snippet:end
+
+function generatorMarkdown(snippetName: string = "dotnetGenerator",
+                           sampleFilepath: string = "lib/sdm/dotnetCore.ts",
+                           sampleRepo: string = "atomist/sample-sdm"): string {
+    const repoSpec = sampleRepo === "atomist/sample-sdm" ? "" : `@${sampleRepo}`;
     return `
 
 # This is a sample docs page referencing a code snippet
 
 Some more text to make it more interesting
 
-<!-- atomist:code-snippet:start=${sampleFilepath}#${snippetName} -->
+<!-- atomist:code-snippet:start=${sampleFilepath}#${snippetName}${repoSpec} -->
 \`\`\`typescript
 Just some other text
 \`\`\`
