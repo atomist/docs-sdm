@@ -235,7 +235,7 @@ function parseSnippetReferences(p: Project, filename: string): SnippetReference[
     return results.map(match => toValueStructure<SnippetReference>(match));
 }
 
-// atomist:code-snippet:start=testysnippet
+// atomist:code-snippet:start=testysnippet@atomist/docs-sdm
 const TestySnippet = "hooray, you found me";
 // atomist:code-snippet:end
 
@@ -269,6 +269,7 @@ describe("microgrammar for parsing snippet reference", () => {
         assert.deepStrictEqual(valueStructure, {
             href: {
                 filepath: "lib/sdm/dotnetCore.ts",
+                repoRef: undefined,
                 snippetName: "snippetypoo",
             },
             middle: `\`\`\`typescript
