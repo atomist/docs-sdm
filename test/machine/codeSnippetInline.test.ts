@@ -216,7 +216,14 @@ function parseSnippetReferences(p: Project, filename: string): SnippetReference[
     return results.map(match => toValueStructure<SnippetReference>(match));
 }
 
-function generatorMarkdown(snippetName: string = "dotnetGenerator", sampleFilepath: string = "lib/sdm/dotnetCore.ts"): string {
+// atomist:code-snippet:start=testysnippet@atomist/docs-sdm
+const TestySnippet = "hooray, you found me";
+// atomist:code-snippet:end
+
+function generatorMarkdown(snippetName: string = "dotnetGenerator",
+                           sampleFilepath: string = "lib/sdm/dotnetCore.ts",
+                           sampleRepo: string = "atomist/samples"): string {
+    const repoSpec = sampleRepo === "atomist/samples" ? "" : `@${sampleRepo}`;
     return `
 
 # This is a sample docs page referencing a code snippet
@@ -243,6 +250,7 @@ describe("microgrammar for parsing snippet reference", () => {
         assert.deepStrictEqual(valueStructure, {
             href: {
                 filepath: "lib/sdm/dotnetCore.ts",
+                repoRef: undefined,
                 snippetName: "snippetypoo",
             },
             middle: `\`\`\`typescript
