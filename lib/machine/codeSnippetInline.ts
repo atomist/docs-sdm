@@ -66,7 +66,7 @@ export const RefMicrogrammar: Microgrammar<SnippetReference> = microgrammar({
         href: {
             filepath: /[^#]*/,
             _hash: "#",
-            snippetName: /\S*/,
+            snippetName: /[^@\s]*/,
             repoRef: optional(microgrammar({
                 phrase: `@\${repoOwner}/\${repoName}`,
                 terms: { repoOwner: /\S+/, repoName: /\S+/ },
