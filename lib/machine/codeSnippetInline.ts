@@ -132,13 +132,13 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
             const name = snippetReference.href.snippetName;
             const repoRef = snippetReference.href.repoRef || defaultRepoRef;
 
-          const rawUrl = `https://raw.githubusercontent.com/${repoRef.repoOwner}/${
+            const rawUrl = `https://raw.githubusercontent.com/${repoRef.repoOwner}/${
             repoRef.repoName
           }/master`;
-          const httpUrl = `https://github.com/${repoRef.repoOwner}/${
+            const httpUrl = `https://github.com/${repoRef.repoOwner}/${
             repoRef.repoName
           }/tree/master`;
-          const httpClient = papi.configuration.http.client.factory.create(rawUrl);
+            const httpClient = papi.configuration.http.client.factory.create(rawUrl);
 
             async function whatToSubstitute(sampleFileUrl: string,
                                             snippetName: string,
