@@ -28,14 +28,14 @@ describe("alphabetizeGlossary transform", () => {
 
     it("alphabetizes one that is there", async () => {
         const projectWithMarkdownFile = InMemoryProject.of({
-            path: "docs/developer/glossary.md",
+            path: "docs/glossary.md",
             content: outOfOrderGlossary(),
         });
         const result = await alphabetizeGlossary(projectWithMarkdownFile);
         assert(result.success);
         assert(result.edited);
 
-        const newContent = (await projectWithMarkdownFile.getFile("docs/developer/glossary.md")).getContentSync();
+        const newContent = (await projectWithMarkdownFile.getFile("docs/glossary.md")).getContentSync();
         assert.strictEqual(newContent, orderedGlossary(), newContent);
     });
 });
