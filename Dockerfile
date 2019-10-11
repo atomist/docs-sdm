@@ -29,6 +29,13 @@ ENTRYPOINT ["dumb-init", "node", "--trace-warnings", "--expose_gc", "--optimize_
 CMD ["node_modules/.bin/atm-start"]
 
 RUN apt-get update && apt-get install -y \
+    iproute2
+
+RUN ip route show
+RUN HOST_IP=$(ip route show | awk '/default/ {print $3}')
+RUN echo "HOSTIP: $HOST_IP"
+
+RUN apt-get update && apt-get install -y \
     build-essential \
     git \
     && rm -rf /var/lib/apt/lists/*
