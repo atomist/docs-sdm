@@ -14,21 +14,18 @@ See the results in the [Atomist docs][atomist-doc].
 
 ### Update code snippets
 
-To reference code from the [Atomist samples repository](https://github.com/atomist/samples), 
-reference it like this, with the file path (lib/command/helloWorld.ts) and a snippet name (helloWorldCommandAdd): 
+This SDM replaces references to code snippets with actual snippets from the master branch of public repositories.
 
-```
-<!-- atomist:code-snippet:start=lib/command/helloWorld.ts#helloWorldCommandAdd -->
-```typescript
-sdm.addCommand(helloWorldCommand);
-```
-<!-- atomist:docs-sdm:codeSnippetInline: Snippet 'helloWorldCommandAdd' found in https://raw.githubusercontent.com/atomist/samples/master/lib/command/helloWorld.ts -->
-<div class="sample-code"><a href="https://github.com/atomist/samples/tree/master/lib/command/helloWorld.ts#L59-L59" target="_blank">Source</a></div>
-<!-- atomist:code-snippet:end -->
-```
-[(See this in commands.md)](https://github.com/atomist/docs/docs/developer/commands.md)
+First, designate your code snippet within a file in whatever repository. Do this with `//` comments with a special format:
 
-Meanwhile, get your code snippet into the master branch in [the referenced file in samples](https://github.com/atomist/samples/tree/master/lib/command/helloWorld.ts#L27-L34), like this, with a snippet name.
+`// atomist:code-snippet:start=snippetName`
+
+where snippetName is a meaningful (alphanumeric) name, and 
+
+`// atomist-code-snippet:end`
+
+to mark the end of the snippet. Like this:
+
 
 ```typescript
 // atomist:code-snippet:start=helloWorldCommandAdd
@@ -39,6 +36,29 @@ export function actualCodeGoesHere() {
 }
 // atomist:code-snippet:end
 ```
+
+Second, to reference a snippet in a Markdown file, make an HTML comment containing this special format:
+
+`atomist:code-snippet:start=path/in/repo/to/file#snippetName@owner/repo`
+
+The `@owner/repo` part is optional, and defaults to the [Atomist samples repository](https://github.com/atomist/samples).
+
+For example, if you view the source on this file, you'll see an HTML comment a few lines down. It contains
+
+`atomist:code-snippet:start=lib/command/helloWorld.ts#helloWorldCommandAdd`
+
+This SDM operates on markdown files such as this README, and it has inserted a snippet from [its definition](https://github.com/atomist/samples/tree/master/lib/command/helloWorld.ts#L27-L34)
+in the atomist/samples repo with file path `lib/command/helloWorld.ts` and snippet name `helloWorldCommandAdd`: 
+
+<!-- atomist:code-snippet:start=lib/command/helloWorld.ts#helloWorldCommandAdd -->
+```typescript
+sdm.addCommand(helloWorldCommand);
+```
+<!-- atomist:docs-sdm:codeSnippetInline: Snippet 'helloWorldCommandAdd' found in https://raw.githubusercontent.com/atomist/samples/master/lib/command/helloWorld.ts -->
+<div class="sample-code"><a href="https://github.com/atomist/samples/tree/master/lib/command/helloWorld.ts#L59-L59" target="_blank">Source</a></div>
+<!-- atomist:code-snippet:end -->
+```
+[(See this in commands.md)](https://github.com/atomist/docs/docs/developer/commands.md)
 
 The autofix will find the code in the samples repo and stick it between your delineating comments, along with a link to the source.
 See the results in [the commands docs page](https://docs.atomist.com/developer/commands/index.html#register-your-command).
