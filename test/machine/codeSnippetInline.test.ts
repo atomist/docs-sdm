@@ -179,7 +179,7 @@ describe("CodeSnippetInlineTransform", () => {
     it("should inline a referenced code snippets in a repository other than samples", async () => {
         const fakeInv = fakeInvocation([{
             url: sampleRepoFileUrl("test/machine/codeSnippetInline.test.ts", { repo: "docs-sdm" }),
-            response: realSnippetFile("dotnetGenerator"),
+            response: testySnippetBit(),
         }]);
         const projectWithMarkdownFile = InMemoryProject.of({
             path: "docs/Generator.md",
@@ -239,9 +239,16 @@ function parseSnippetReferences(p: Project, filename: string): SnippetReference[
     return results.map(match => toValueStructure<SnippetReference>(match));
 }
 
+
+function testySnippetBit() {
+    return `
+    blah blah blah
+
 // atomist:code-snippet:start=testysnippet
 const TestySnippet = "hooray, you found me";
 // atomist:code-snippet:end
+blah blah`;
+}
 
 function generatorMarkdown(snippetName: string = "dotnetGenerator",
     sampleFilepath: string = "lib/sdm/dotnetCore.ts",
