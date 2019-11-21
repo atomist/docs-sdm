@@ -80,8 +80,8 @@ function fakeFactory(www: FakeInternet): HttpClientFactory {
     };
 }
 
-function sampleRepoFileUrl(filepath: string, params: { repo: string, owner: string } = { repo: "samples", owner: "atomist" }): string {
-    const { owner, repo } = params;
+function sampleRepoFileUrl(filepath: string, params: { repo?: string, owner?: string } = {}): string {
+    const { owner, repo } = { repo: "samples", owner: "atomist", ...params };
     return `https://raw.githubusercontent.com/${owner}/${repo}/master/${filepath}`;
 }
 
@@ -178,7 +178,7 @@ describe("CodeSnippetInlineTransform", () => {
 
     it("should inline a referenced code snippets in a repository other than samples", async () => {
         const fakeInv = fakeInvocation([{
-            url: sampleRepoFileUrl("lib/sdm/dotnetCore.ts"),
+            url: sampleRepoFileUrl("test/machine/codeSnippetInline.test.ts", { repo: "docs-sdm" }),
             response: realSnippetFile("dotnetGenerator"),
         }]);
         const projectWithMarkdownFile = InMemoryProject.of({
