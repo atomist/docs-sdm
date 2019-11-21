@@ -239,7 +239,6 @@ function parseSnippetReferences(p: Project, filename: string): SnippetReference[
     return results.map(match => toValueStructure<SnippetReference>(match));
 }
 
-
 function testySnippetBit() {
     return `
     blah blah blah
@@ -251,8 +250,8 @@ blah blah`;
 }
 
 function generatorMarkdown(snippetName: string = "dotnetGenerator",
-    sampleFilepath: string = "lib/sdm/dotnetCore.ts",
-    sampleRepo: string = "atomist/samples"): string {
+                           sampleFilepath: string = "lib/sdm/dotnetCore.ts",
+                           sampleRepo: string = "atomist/samples"): string {
     const repoSpec = sampleRepo === "atomist/samples" ? "" : `@${sampleRepo}`;
     return `
 
