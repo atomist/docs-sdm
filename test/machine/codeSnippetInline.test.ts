@@ -80,8 +80,9 @@ function fakeFactory(www: FakeInternet): HttpClientFactory {
     };
 }
 
-function sampleRepoFileUrl(filepath: string): string {
-    return "https://raw.githubusercontent.com/atomist/samples/master/" + filepath;
+function sampleRepoFileUrl(filepath: string, params: { repo: string, owner: string } = { repo: "samples", owner: "atomist" }): string {
+    const { owner, repo } = params;
+    return `https://raw.githubusercontent.com/${owner}/${repo}/master/${filepath}`;
 }
 
 function fakeInvocation(www: FakeInternet = [{
@@ -176,7 +177,10 @@ describe("CodeSnippetInlineTransform", () => {
     });
 
     it("should inline a referenced code snippets in a repository other than samples", async () => {
-        const fakeInv = fakeInvocation();
+        const fakeInv = fakeInvocation([{
+            url: sampleRepoFileUrl("lib/sdm/dotnetCore.ts"),
+            response: realSnippetFile("dotnetGenerator"),
+        }]);
         const projectWithMarkdownFile = InMemoryProject.of({
             path: "docs/Generator.md",
             content: generatorMarkdown("testysnippet",
@@ -240,8 +244,8 @@ const TestySnippet = "hooray, you found me";
 // atomist:code-snippet:end
 
 function generatorMarkdown(snippetName: string = "dotnetGenerator",
-                           sampleFilepath: string = "lib/sdm/dotnetCore.ts",
-                           sampleRepo: string = "atomist/samples"): string {
+    sampleFilepath: string = "lib/sdm/dotnetCore.ts",
+    sampleRepo: string = "atomist/samples"): string {
     const repoSpec = sampleRepo === "atomist/samples" ? "" : `@${sampleRepo}`;
     return `
 
