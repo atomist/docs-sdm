@@ -11,7 +11,7 @@ This page details all runtime OSS dependencies of `@atomist/docs-sdm`.
 | License | Count |
 |---------|-------|
 |[AFLv2.1](#aflv21)|1|
-|[Apache-2.0](#apache-20)|24|
+|[Apache-2.0](#apache-20)|25|
 |[BSD-2-Clause](#bsd-2-clause)|7|
 |[BSD-3-Clause](#bsd-3-clause)|20|
 |[BSD](#bsd)|4|
@@ -64,6 +64,7 @@ Apache License 2.0 - [http://www.apache.org/licenses/LICENSE-2.0](http://www.apa
 |`tslib`|`1.10.0`|Microsoft Corp.|[https://github.com/Microsoft/tslib](https://github.com/Microsoft/tslib)|
 |`tunnel-agent`|`0.6.0`|Mikeal Rogers|[https://github.com/mikeal/tunnel-agent](https://github.com/mikeal/tunnel-agent)|
 |`typescript`|`3.6.2`|Microsoft Corp.|[https://github.com/Microsoft/TypeScript](https://github.com/Microsoft/TypeScript)|
+|`typescript`|`3.6.3`|Microsoft Corp.|[https://github.com/Microsoft/TypeScript](https://github.com/Microsoft/TypeScript)|
 
 #### BSD
 

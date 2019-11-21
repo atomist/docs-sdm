@@ -35,11 +35,11 @@ import * as _ from "lodash";
  */
 export async function alphabetizeGlossary(project: Project): Promise<TransformResult> {
     let edited = false;
-    const file = await project.getFile("docs/developer/glossary.md");
+    const file = await project.getFile("docs/glossary.md");
     if (file) {
         const definitions = await astUtils.gatherFromMatches(project,
             RemarkFileParser,
-            "docs/developer/glossary.md",
+            "docs/glossary.md",
             "//heading",
             m => {
                 const headingText = (m as any).text as string;
