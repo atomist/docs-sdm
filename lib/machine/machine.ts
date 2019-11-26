@@ -154,7 +154,7 @@ export function machine(
         /* If nothing interesting changed, do nothing */
         whenPushSatisfies(allOf(IsMkdocsProject, not(isMaterialChange({
             extensions: ["html", "js"],
-            files: ["mkdocs.yml", ".markdownlint.json"],
+            files: ["mkdocs.yml", ".markdownlint.json", "README.md"],
             globs: ["docs/**/*"],
         })))).itMeans("Nothing about the markdown changed")
             .setGoals(ImmaterialGoals.andLock()),
