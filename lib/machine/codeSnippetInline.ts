@@ -18,6 +18,7 @@ import {
     HttpMethod,
     logger,
     projectUtils,
+    HttpClient,
 } from "@atomist/automation-client";
 import {
     AutoMergeMethod,
@@ -110,6 +111,46 @@ interface CodeSnippetInlineOutcome {
     edited: boolean;
 }
 
+async function whatToSubstitute(httpClient: HttpClient, sampleFileUrl: string,
+    snippetName: string,
+    sampleFileHttpUrl: string): Promise<{
+        do: "replace" | "sampleFileNotFound" | "snippetNotFound",
+        commentContent: string,
+        snippetContent?: string,
+        link?: string, // html to link to source
+    }> {
+    const sampleResponse = (await httpClient.exchange<string>(
+        sampleFileUrl,
+        { method: HttpMethod.Get }).catch(err =>
+            // I don't know what is really returned here
+            ({ body: undefined, status: err.message })));
+    if (!sampleResponse.body) {
+        logger.error(
+            `Failed to retrieve ${sampleFileUrl}: status ${sampleResponse.status}`);
+        return {
+            do: "sampleFileNotFound",
+            commentContent: `Warning: looking for '${snippetName}' but could not retrieve file ${sampleFileHttpUrl}`,
+        };
+    }
+
+    const sampleMatchReports = Array.from(
+        SnippetMicrogrammar(snippetName)
+            .matchReportIterator(sampleResponse.body));
+    if (sampleMatchReports.length === 0) {
+        return {
+            do: "snippetNotFound",
+            commentContent: `Warning: snippet '${snippetName}' not found in ${sampleFileUrl}`,
+        };
+    }
+
+    const lineNumbers = lineNumbersOfSnippet(sampleResponse.body, sampleMatchReports[0]);
+    return {
+        do: "replace",
+        commentContent: `Snippet '${snippetName}' found in ${sampleFileUrl}`,
+        snippetContent: contentOfSnippet(sampleMatchReports[0]),
+        link: `${sampleFileHttpUrl}#L${lineNumbers.start}-L${lineNumbers.end}`,
+    };
+}
 /**
  * CodeTransform to inline referenced code snippets
  */
@@ -128,48 +169,7 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
             const file = snippetReference.href.filepath;
             const name = snippetReference.href.snippetName;
 
-            async function whatToSubstitute(sampleFileUrl: string,
-                                            snippetName: string,
-                                            sampleFileHttpUrl: string): Promise<{
-                    do: "replace" | "sampleFileNotFound" | "snippetNotFound",
-                    commentContent: string,
-                    snippetContent?: string,
-                    link?: string, // html to link to source
-                }> {
-                const sampleResponse = (await httpClient.exchange<string>(
-                    sampleFileUrl,
-                    { method: HttpMethod.Get }).catch(err =>
-                        // I don't know what is really returned here
-                        ({ body: undefined, status: err.message })));
-                if (!sampleResponse.body) {
-                    logger.error(
-                        `Failed to retrieve ${sampleFileUrl}: status ${sampleResponse.status}`);
-                    return {
-                        do: "sampleFileNotFound",
-                        commentContent: `Warning: looking for '${snippetName}' but could not retrieve file ${file}`,
-                    };
-                }
-
-                const sampleMatchReports = Array.from(
-                    SnippetMicrogrammar(snippetName)
-                        .matchReportIterator(sampleResponse.body));
-                if (sampleMatchReports.length === 0) {
-                    return {
-                        do: "snippetNotFound",
-                        commentContent: `Warning: snippet '${snippetName}' not found in ${sampleFileUrl}`,
-                    };
-                }
-
-                const lineNumbers = lineNumbersOfSnippet(sampleResponse.body, sampleMatchReports[0]);
-                return {
-                    do: "replace",
-                    commentContent: `Snippet '${snippetName}' found in ${sampleFileUrl}`,
-                    snippetContent: contentOfSnippet(sampleMatchReports[0]),
-                    link: `${sampleFileHttpUrl}#L${lineNumbers.start}-L${lineNumbers.end}`,
-                };
-            }
-
-            const whatToDo = await whatToSubstitute(`${rawUrl}/${file}`, name, `${httpUrl}/${file}`);
+            const whatToDo = await whatToSubstitute(httpClient, `${rawUrl}/${file}`, name, `${httpUrl}/${file}`);
 
             const currentCommentContent = snippetReference.snippetComment ? snippetReference.snippetComment.snippetCommentContent.trim() : "";
             const currentSnippetContent = snippetReference.middle.trim();
