@@ -250,8 +250,8 @@ blah blah`;
 }
 
 function generatorMarkdown(snippetName: string = "dotnetGenerator",
-    sampleFilepath: string = "lib/sdm/dotnetCore.ts",
-    sampleRepo: string = "atomist/samples"): string {
+                           sampleFilepath: string = "lib/sdm/dotnetCore.ts",
+                           sampleRepo: string = "atomist/samples"): string {
     const repoSpec = sampleRepo === "atomist/samples" ? "" : `@${sampleRepo}`;
     return `
 
@@ -302,7 +302,7 @@ Just some other text
 new stuff should go here
 <!-- atomist:docs-sdm:codeSnippetInline: Warning: looking for 'helloWorldCommandAdd' but could not retrieve file https://github.com/atomist/samples/tree/master/SNIPPET_NAME -->
 <!-- atomist:code-snippet:end -->
-        
+
         `));
         assert.strictEqual(results.length, 2);
         const match = results[results.length - 1]; // the last one should be the good one

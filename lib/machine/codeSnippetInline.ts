@@ -15,10 +15,10 @@
  */
 
 import {
+    HttpClient,
     HttpMethod,
     logger,
     projectUtils,
-    HttpClient,
 } from "@atomist/automation-client";
 import {
     AutoMergeMethod,
@@ -118,8 +118,8 @@ interface CodeSnippetInlineOutcome {
 }
 
 async function whatToSubstitute(httpClient: HttpClient, sampleFileUrl: string,
-    snippetName: string,
-    sampleFileHttpUrl: string): Promise<{
+                                snippetName: string,
+                                sampleFileHttpUrl: string): Promise<{
         do: "replace" | "sampleFileNotFound" | "snippetNotFound",
         commentContent: string,
         snippetContent?: string,
