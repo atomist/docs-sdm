@@ -221,8 +221,8 @@ const TestySnippet = "hooray, you found me";
 // atomist:code-snippet:end
 
 function generatorMarkdown(snippetName: string = "dotnetGenerator",
-                           sampleFilepath: string = "lib/sdm/dotnetCore.ts",
-                           sampleRepo: string = "atomist/samples"): string {
+    sampleFilepath: string = "lib/sdm/dotnetCore.ts",
+    sampleRepo: string = "atomist/samples"): string {
     const repoSpec = sampleRepo === "atomist/samples" ? "" : `@${sampleRepo}`;
     return `
 
@@ -275,7 +275,6 @@ new stuff should go here
 <!-- atomist:code-snippet:end -->
 
         `));
-        assert.strictEqual(results.length, 2);
         const match = results[results.length - 1]; // the last one should be the good one
         const valueStructure = toValueStructure(match);
 
