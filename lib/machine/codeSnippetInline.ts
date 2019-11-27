@@ -48,6 +48,10 @@ export interface SnippetReference {
     href: {
         filepath: string,
         snippetName: string,
+        repoRef?: {
+            repoOwner: string,
+            repoName: string,
+        },
     };
     middle: string;
     snippetComment: {
@@ -65,7 +69,7 @@ export const RefMicrogrammar: Microgrammar<SnippetReference> = microgrammar({
     <!-- atomist:code-snippet:end -->`
     , terms: {
         href: {
-            filepath: /[^#]*/,
+            filepath: /[^#>]*/,
             _hash: "#",
             snippetName: /[^@\s]*/,
             repoRef: optional(microgrammar({
