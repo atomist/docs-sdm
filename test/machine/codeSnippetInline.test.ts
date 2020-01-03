@@ -80,8 +80,9 @@ function fakeFactory(www: FakeInternet): HttpClientFactory {
     };
 }
 
-function sampleRepoFileUrl(filepath: string): string {
-    return "https://raw.githubusercontent.com/atomist/samples/master/" + filepath;
+function sampleRepoFileUrl(filepath: string, params: { repo?: string, owner?: string } = {}): string {
+    const { owner, repo } = { repo: "samples", owner: "atomist", ...params };
+    return `https://raw.githubusercontent.com/${owner}/${repo}/master/${filepath}`;
 }
 
 function fakeInvocation(www: FakeInternet = [{
@@ -175,6 +176,28 @@ describe("CodeSnippetInlineTransform", () => {
         assert(fakeInv.progressLog.log.includes("Snippets replaced:\nname: dotnetGenerator"), fakeInv.progressLog.log);
     });
 
+    it("should inline a referenced code snippets in a repository other than samples", async () => {
+        const fakeInv = fakeInvocation([{
+            url: sampleRepoFileUrl("test/machine/codeSnippetInline.test.ts", { repo: "docs-sdm" }),
+            response: testySnippetBit(),
+        }]);
+        const projectWithMarkdownFile = InMemoryProject.of({
+            path: "docs/Generator.md",
+            content: generatorMarkdown("testysnippet",
+                "test/machine/codeSnippetInline.test.ts", // this file
+                "atomist/docs-sdm"), // this repo :-)
+        });
+        const result = (await CodeSnippetInlineTransform(
+            projectWithMarkdownFile, fakeInv,
+        )) as TransformResult;
+        assert(result.success);
+        assert(result.edited, "should be edited");
+        const mdFile = await projectWithMarkdownFile.getFile("docs/Generator.md");
+        const mdContent = await mdFile.getContent();
+        assert(mdContent.includes(`const TestySnippet = "hooray, you found me";`), mdContent);
+        assert(fakeInv.progressLog.log.includes("Snippets replaced:\nname: testysnippet"), fakeInv.progressLog.log);
+    });
+
     it("should add a comment about notFound if a snippet is inserted, but only once", async () => {
         const fakeInv = fakeInvocation();
         const projectWithMarkdownFile = InMemoryProject.of({
@@ -216,9 +239,15 @@ function parseSnippetReferences(p: Project, filename: string): SnippetReference[
     return results.map(match => toValueStructure<SnippetReference>(match));
 }
 
+function testySnippetBit() {
+    return `
+    blah blah blah
+
 // atomist:code-snippet:start=testysnippet
 const TestySnippet = "hooray, you found me";
 // atomist:code-snippet:end
+blah blah`;
+}
 
 function generatorMarkdown(snippetName: string = "dotnetGenerator",
                            sampleFilepath: string = "lib/sdm/dotnetCore.ts",
@@ -230,7 +259,7 @@ function generatorMarkdown(snippetName: string = "dotnetGenerator",
 
 Some more text to make it more interesting
 
-<!-- atomist:code-snippet:start=${sampleFilepath}#${snippetName} -->
+<!-- atomist:code-snippet:start=${sampleFilepath}#${snippetName}${repoSpec} -->
 \`\`\`typescript
 Just some other text
 \`\`\`

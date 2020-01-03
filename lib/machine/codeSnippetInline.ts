@@ -48,10 +48,10 @@ export interface SnippetReference {
     href: {
         filepath: string,
         snippetName: string,
-        repoRef?: {
+        repoRef: {
             repoOwner: string,
             repoName: string,
-        },
+        };
     };
     middle: string;
     snippetComment: {
@@ -73,8 +73,8 @@ export const RefMicrogrammar: Microgrammar<SnippetReference> = microgrammar({
             _hash: "#",
             snippetName: /[^@\s]*/,
             repoRef: optional(microgrammar({
-                phrase: `@\${repoOwner}/\${repoName}`,
-                terms: { repoOwner: /\S+/, repoName: /\S+/ },
+                phrase: `@\${repoOwner}\/\${repoName}`,
+                terms: { repoOwner: /[^\/]+/, repoName: /\S+/ },
             })),
         },
         middle: takeUntil("<!-- atomist:"),
@@ -92,6 +92,8 @@ export interface SnippetFound {
     snippetName: string;
     snippetContent: string;
 }
+
+const defaultRepoRef = { repoOwner: "atomist", repoName: "samples" };
 
 export function SnippetMicrogrammar(snippetName: string): Microgrammar<SnippetFound> {
     return microgrammar({
@@ -133,7 +135,7 @@ async function whatToSubstitute(httpClient: HttpClient, sampleFileUrl: string,
             `Failed to retrieve ${sampleFileUrl}: status ${sampleResponse.status}`);
         return {
             do: "sampleFileNotFound",
-            commentContent: `Warning: looking for '${snippetName}' but could not retrieve file ${sampleFileHttpUrl}`,
+            commentContent: `Warning: looking for '${snippetName}' but could not retrieve file ${sampleFileUrl}`,
         };
     }
 
@@ -159,9 +161,6 @@ async function whatToSubstitute(httpClient: HttpClient, sampleFileUrl: string,
  * CodeTransform to inline referenced code snippets
  */
 export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
-    const rawUrl = "https://raw.githubusercontent.com/atomist/samples/master";
-    const httpUrl = "https://github.com/atomist/samples/tree/master";
-    const httpClient = papi.configuration.http.client.factory.create(rawUrl);
     const writeToLog = !!papi.progressLog ? (log: string, ...args: any[]) => papi.progressLog.write(log, ...args) : logger.info;
     const outcomes: CodeSnippetInlineOutcome[] = [];
 
@@ -172,6 +171,15 @@ export const CodeSnippetInlineTransform: CodeTransform = async (p, papi) => {
             const snippetReference = toValueStructure<SnippetReference>(referenceMatch);
             const file = snippetReference.href.filepath;
             const name = snippetReference.href.snippetName;
+            const repoRef = snippetReference.href.repoRef || defaultRepoRef;
+
+            const rawUrl = `https://raw.githubusercontent.com/${repoRef.repoOwner}/${
+                repoRef.repoName
+                }/master`;
+            const httpUrl = `https://github.com/${repoRef.repoOwner}/${
+                repoRef.repoName
+                }/tree/master`;
+            const httpClient = papi.configuration.http.client.factory.create(rawUrl);
 
             const whatToDo = await whatToSubstitute(httpClient, `${rawUrl}/${file}`, name, `${httpUrl}/${file}`);
 
