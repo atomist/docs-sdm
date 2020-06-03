@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Atomist, Inc.
+ * Copyright © 2020 Atomist, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -263,6 +263,7 @@ Just some other text
     });
 
     it("finds a good snippet after a bad snippet reference", () => {
+        /* tslint:disable:max-line-length */
         const results = Array.from(RefMicrogrammar.matchReportIterator(`
 \`\`\`html
             <!-- atomist:code-snippet:start=SNIPPET_NAME -->
@@ -275,6 +276,7 @@ new stuff should go here
 <!-- atomist:code-snippet:end -->
 
         `));
+        /* tslint:enable:max-line-length */
         const match = results[results.length - 1]; // the last one should be the good one
         const valueStructure = toValueStructure(match);
 

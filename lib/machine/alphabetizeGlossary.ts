@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Atomist, Inc.
+ * Copyright © 2020 Atomist, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 import {
     astUtils,
-    logger,
     Project,
 } from "@atomist/automation-client";
 import {
@@ -37,17 +36,18 @@ export async function alphabetizeGlossary(project: Project): Promise<TransformRe
     let edited = false;
     const file = await project.getFile("docs/glossary.md");
     if (file) {
-        const definitions = await astUtils.gatherFromMatches(project,
-            RemarkFileParser,
-            "docs/glossary.md",
-            "//heading",
-            m => {
+        const definitions = await astUtils.gather(project, {
+            parseWith: RemarkFileParser,
+            globPatterns: ["docs/glossary.md"],
+            pathExpression: "//heading",
+            mapper: m => {
                 const headingText = (m as any).text as string;
                 return {
                     word: headingText,
                     wordAndDefinition: m.$value,
                 };
-            });
+            },
+        });
 
         const alphabetized = _.sortBy(definitions, d => d.word.toLowerCase());
         const newContent = alphabetized.map(d => d.wordAndDefinition).join("\n\n") + "\n";
