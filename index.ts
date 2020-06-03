@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Atomist, Inc.
+ * Copyright © 2020 Atomist, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,12 @@
  * limitations under the License.
  */
 
-import { configureHumio } from "@atomist/automation-client-ext-humio";
-import { configureLogzio } from "@atomist/automation-client-ext-logzio";
 import {
     CacheConfiguration,
     SoftwareDeliveryMachineConfiguration,
 } from "@atomist/sdm";
-import {
-    ConfigureOptions,
-    configureSdm,
-} from "@atomist/sdm-core";
+import { configureSdm } from "@atomist/sdm-core";
 import { machine } from "./lib/machine/machine";
-
-const machineOptions: ConfigureOptions = {
-    requiredConfigurationValues: [
-    ],
-};
 
 // Main configuration entry point for this SDM
 export const configuration: SoftwareDeliveryMachineConfiguration<CacheConfiguration> = {
@@ -37,9 +27,7 @@ export const configuration: SoftwareDeliveryMachineConfiguration<CacheConfigurat
         level: "info",
     },
     postProcessors: [
-        configureHumio,
-        configureLogzio,
-        configureSdm(machine, machineOptions),
+        configureSdm(machine),
     ],
     sdm: {
         cache: {

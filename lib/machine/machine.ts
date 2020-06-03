@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Atomist, Inc.
+ * Copyright © 2020 Atomist, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import {
     allOf,
     AutoCodeInspection,
     Autofix,
-    Fingerprint,
     goal,
     goals,
     ImmaterialGoals,
@@ -65,8 +64,6 @@ export function machine(
     configuration: SoftwareDeliveryMachineConfiguration,
 ): SoftwareDeliveryMachine {
 
-    logger.info("The configured log level is: " + configuration.logging.level);
-
     const sdm = createSoftwareDeliveryMachine({
         name: "Atomist Documentation Machine",
         configuration,
@@ -84,10 +81,6 @@ export function machine(
         .with(AlphabetizeGlossaryAutofix)
         .with(CodeSnippetInlineAutofix)
         .with(lintAutofix);
-
-    /* step 1: fix stuff in the code */
-    const onlyCodeSnippetAutofix = new Autofix({ displayName: "code snippet autofix" })
-        .with(CodeSnippetInlineAutofix);
 
     /* another step: look for problems like undefined references,
      * and send messages to Slack about them. */
@@ -164,9 +157,6 @@ export function machine(
         /* additionally, if it's on the default branch, publish to the real site. */
         whenPushSatisfies(IsMkdocsProject, ToDefaultBranch)
             .setGoals(officialPublish),
-        /* for every project that is not documentation, check code snippets in its README etc. */
-        whenPushSatisfies(not(IsMkdocsProject), isMaterialChange({ extensions: ["md"] }))
-            .setGoals(onlyCodeSnippetAutofix),
     );
 
     /* these are just useful */

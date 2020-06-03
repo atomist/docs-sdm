@@ -26,8 +26,6 @@
   "types": "./index.d.ts",
   "dependencies": {
     "@atomist/automation-client": "^1.8.0-master.20191121010001",
-    "@atomist/automation-client-ext-humio": "^0.2.0",
-    "@atomist/automation-client-ext-logzio": "^1.0.1",
     "@atomist/microgrammar": "^1.2.1",
     "@atomist/sdm": "^1.8.0-master.20191111174038",
     "@atomist/sdm-core": "^1.8.0-master.20191104170555",
@@ -65,7 +63,7 @@
   },
   "scripts": {
     "autotest": "supervisor --watch index.ts,lib,test --extensions ts --no-restart-on exit --quiet --exec npm -- test",
-    "build": "run-s compile test lint",
+    "build": "run-s clean compile test lint",
     "clean": "run-p clean:compile clean:test clean:run",
     "clean:compile": "rimraf git-info.json \"index.{d.ts,js{,.map}}\" \"{lib,test}/**/*.{d.ts,js{,.map}}\" lib/typings/types.ts",
     "clean:dist": "run-s clean clean:npm",
