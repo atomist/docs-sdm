@@ -19,6 +19,24 @@
                 }
               },
               {
+                "name": "AWS_ACCESS_KEY_ID",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "access_key",
+                    "name": "docs-sdm-aws"
+                  }
+                }
+              },
+              {
+                "name": "AWS_SECRET_ACCESS_KEY",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "secret_key",
+                    "name": "docs-sdm-aws"
+                  }
+                }
+              },
+              {
                 "name": "NODE_ENV",
                 "value": "production"
               },
