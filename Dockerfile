@@ -19,7 +19,7 @@ WORKDIR /opt/app
 EXPOSE 2866
 
 ENV BLUEBIRD_WARNINGS 0
-ENV NODE_ENV production
+ENV NODE_ENV development
 ENV ATOMIST_ENV production
 ENV NPM_CONFIG_LOGLEVEL warn
 ENV SUPPRESS_NO_CONFIG_WARNING true
@@ -27,6 +27,13 @@ ENV SUPPRESS_NO_CONFIG_WARNING true
 ENTRYPOINT ["dumb-init", "node", "--trace-warnings", "--expose_gc", "--optimize_for_size", "--always_compact", "--max_old_space_size=384"]
 
 CMD ["node_modules/.bin/atm-start"]
+
+RUN apt-get update && apt-get install -y \
+    iproute2
+
+RUN ip route show
+RUN HOST_IP=$(ip route show | awk '/default/ {print $3}')
+RUN echo "HOSTIP: $HOST_IP"
 
 RUN apt-get update && apt-get install -y \
     build-essential \
